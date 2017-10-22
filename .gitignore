@@ -1,0 +1,4 @@
+*.swp
+logs
+__pychache__
+checkpoint
