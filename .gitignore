@@ -1,4 +1,9 @@
 *.swp
 logs
-__pychache__
+__pycache__
 checkpoint
+
+DKVMN/*.swp
+DKVMN/logs
+DKVMN/__pycache__
+DKVMN/checkpoint
