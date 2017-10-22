@@ -15,8 +15,8 @@ def main():
         parser = argparse.ArgumentParser()
         #parser.add_argument('--', type=, default=)
 
-        parser.add_argument('--env_name', type=str, default='CartPole-v0')
-        #parser.add_argument('--', type=, default=)
+        parser.add_argument('--env_name', type=str, default='CartPole-v0', help='CartPole-v0, DKVMN')
+        #parser.add_argument('--simple', type=str2bool, default='false')
 
         parser.add_argument('--train', type=str2bool, default='true')
         parser.add_argument('--batch_size', type=int, default=32)
