@@ -2,7 +2,6 @@
 logs
 __pycache__
 checkpoint
-
 DKVMN/*.swp
 DKVMN/logs
 DKVMN/__pycache__
