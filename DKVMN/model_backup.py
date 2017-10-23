@@ -13,8 +13,6 @@ class Model():
         self.name = name
         self.sess = sess
 
-        '''
-
         # Initialize Memory
         with tf.variable_scope('Memory'):
             init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
@@ -39,24 +37,50 @@ class Model():
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
             # B
             self.qa_embed_mtx = tf.get_variable('qa_embed', [2*self.args.n_questions+1, self.args.memory_value_state_dim], initializer=tf.truncated_normal_initializer(stddev=0.1))        
-        '''
 
-        #self.prediction = self.build_network(reuse_flag=False)
-        #self.build_optimizer()
-        self.create_model()
+        self.prediction = self.build_network(reuse_flag=False)
+        self.build_optimizer()
+        #self.create_model()
     
-    def prediction_network(self, q, qa, reuse_flag):
-        #print('Building network')
+    def build_network(self, reuse_flag):
+        print('Building network')
 
+        self.q_data = tf.placeholder(tf.int32, [self.args.batch_size], name='q_data') 
+        self.qa_data = tf.placeholder(tf.int32, [self.args.batch_size], name='qa_data')
+        self.target = tf.placeholder(tf.float32, [self.args.batch_size], name='target')
+
+
+        # Embedding to [batch size, seq_len, memory key state dim]
+        q_embed_data = tf.nn.embedding_lookup(self.q_embed_mtx, self.q_data)
+        # List of [batch size, 1, memory key state dim] with 'seq_len' elements
+        #print('Q_embedding shape : %s' % q_embed_data.get_shape())
+        #slice_q_embed_data = tf.split(q_embed_data, self.args.seq_len, 1)
+        #print(len(slice_q_embed_data), type(slice_q_embed_data), slice_q_embed_data[0].get_shape())
+        # Embedding to [batch size, seq_len, memory value state dim]
+        qa_embed_data = tf.nn.embedding_lookup(self.qa_embed_mtx, self.qa_data)
+        #print('QA_embedding shape: %s' % qa_embed_data.get_shape())
+        # List of [batch size, 1, memory value state dim] with 'seq_len' elements
+        #slice_qa_embed_data = tf.split(qa_embed_data, self.args.seq_len, 1)
+        
+        #prediction = list()
+        #reuse_flag = False
+
+        # k_t : [batch size, memory key state dim]
+        #q = tf.squeeze(slice_q_embed_data[i], 1)
         # Attention, [batch size, memory size]
-        self.correlation_weight = self.memory.attention(q)
+        self.correlation_weight = self.memory.attention(q_embed_data)
         
         # Read process, [batch size, memory value state dim]
         self.read_content = self.memory.read(self.correlation_weight)
+        
+        # Write process, [batch size, memory size, memory value state dim]
+        # qa : [batch size, memory value state dim]
+        #qa = tf.squeeze(slice_qa_embed_data[i], 1)
+        # Only last time step value is necessary
 
-        self.new_memory_value = self.memory.write(self.correlation_weight, qa, reuse=reuse_flag)
+        self.new_memory_value = self.memory.write(self.correlation_weight, qa_embed_data, reuse=reuse_flag)
 
-        mastery_level_prior_difficulty = tf.concat([self.read_content, q], 1)
+        mastery_level_prior_difficulty = tf.concat([self.read_content, q_embed_data], 1)
         # f_t
         summary_vector = tf.tanh(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
         # p_t
@@ -64,6 +88,71 @@ class Model():
 
         return pred_logits
         
+    def build_optimizer(self):
+        print('Building optimizer')
+        # 'seq_len' means question sequences
+        self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
+        self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data_seq')
+        self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target_seq')
+
+        # Embedding to [batch size, seq_len, memory key state dim]
+        #q_embed_data = tf.nn.embedding_lookup(q_embed_mtx, self.q_data_seq)
+        # List of [batch size, 1, memory key state dim] with 'seq_len' elements
+        #print('Q_embedding shape : %s' % q_embed_data.get_shape())
+        slice_q_data = tf.split(self.q_data_seq, self.args.seq_len, 1)
+        #print(len(slice_q_embed_data), type(slice_q_embed_data), slice_q_embed_data[0].get_shape())
+        # Embedding to [batch size, seq_len, memory value state dim]
+        #qa_embed_data = tf.nn.embedding_lookup(qa_embed_mtx, self.qa_data_seq)
+        #print('QA_embedding shape: %s' % qa_embed_data.get_shape())
+        # List of [batch size, 1, memory value state dim] with 'seq_len' elements
+        slice_qa_data = tf.split(self.qa_data_seq, self.args.seq_len, 1)
+        
+        prediction = list()
+        reuse_flag = False
+
+        # Logics
+        for i in range(self.args.seq_len):
+            # To reuse linear vectors
+
+            q = tf.squeeze(slice_q_data[i], 1)
+            # Attention, [batch size, memory size]
+            qa = tf.squeeze(slice_qa_data[i], 1)
+            # Only last time step value is necessary
+
+            pred_logits =  
+
+            prediction.append(pred_logits)
+
+        # 'prediction' : seq_len length list of [batch size ,1], make it [batch size, seq_len] tensor
+        # tf.stack convert to [batch size, seq_len, 1]
+        self.pred_logits = tf.reshape(tf.stack(prediction, axis=1), [self.args.batch_size, self.args.seq_len]) 
+
+        # Define loss : standard cross entropy loss, need to ignore '-1' label example
+        # Make target/label 1-d array
+        target_1d = tf.reshape(self.target_seq, [-1])
+        pred_logits_1d = tf.reshape(self.pred_logits, [-1])
+        index = tf.where(tf.not_equal(target_1d, tf.constant(-1., dtype=tf.float32)))
+        # tf.gather(params, indices) : Gather slices from params according to indices
+        filtered_target = tf.gather(target_1d, index)
+        filtered_logits = tf.gather(pred_logits_1d, index)
+        self.loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=filtered_logits, labels=filtered_target))
+        self.pred = tf.sigmoid(self.pred_logits)
+
+        # Optimizer : SGD + MOMENTUM with learning rate decay
+        self.global_step = tf.Variable(0, trainable=False)
+        self.lr = tf.placeholder(tf.float32, [], name='learning_rate')
+#        self.lr_decay = tf.train.exponential_decay(self.args.initial_lr, global_step=global_step, decay_steps=10000, decay_rate=0.667, staircase=True)
+#        self.learning_rate = tf.maximum(lr, self.args.lr_lowerbound)
+        optimizer = tf.train.MomentumOptimizer(self.lr, self.args.momentum)
+        grads, vrbs = zip(*optimizer.compute_gradients(self.loss))
+        grad, _ = tf.clip_by_global_norm(grads, self.args.maxgradnorm)
+        self.train_op = optimizer.apply_gradients(zip(grad, vrbs), global_step=self.global_step)
+#        grad_clip = [(tf.clip_by_value(grad, -self.args.maxgradnorm, self.args.maxgradnorm), var) for grad, var in grads]
+        self.tr_vrbs = tf.trainable_variables()
+        for i in self.tr_vrbs:
+            print(i.name)
+
+        self.saver = tf.train.Saver()
 
     def create_model(self):
         # 'seq_len' means question sequences
@@ -71,6 +160,7 @@ class Model():
         self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
         self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
           
+        '''
         # Initialize Memory
         with tf.variable_scope('Memory'):
             init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
@@ -90,11 +180,12 @@ class Model():
         # Embedding to [batch size, seq_len, memory_state_dim(d_k or d_v)]
         with tf.variable_scope('Embedding'):
             # A
-            self.q_embed_mtx = tf.get_variable('q_embed', [self.args.n_questions+1, self.args.memory_key_state_dim],\
+            q_embed_mtx = tf.get_variable('q_embed', [self.args.n_questions+1, self.args.memory_key_state_dim],\
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
             # B
-            self.qa_embed_mtx = tf.get_variable('qa_embed', [2*self.args.n_questions+1, self.args.memory_value_state_dim], initializer=tf.truncated_normal_initializer(stddev=0.1))        
+            qa_embed_mtx = tf.get_variable('qa_embed', [2*self.args.n_questions+1, self.args.memory_value_state_dim], initializer=tf.truncated_normal_initializer(stddev=0.1))        
 
+        '''
         # Embedding to [batch size, seq_len, memory key state dim]
         q_embed_data = tf.nn.embedding_lookup(self.q_embed_mtx, self.q_data_seq)
         # List of [batch size, 1, memory key state dim] with 'seq_len' elements
@@ -115,11 +206,27 @@ class Model():
             # To reuse linear vectors
             if i != 0:
                 reuse_flag = True
-
+            # k_t : [batch size, memory key state dim]
             q = tf.squeeze(slice_q_embed_data[i], 1)
+            # Attention, [batch size, memory size]
+            self.correlation_weight = self.memory.attention(q)
+            
+            # Read process, [batch size, memory value state dim]
+            self.read_content = self.memory.read(self.correlation_weight)
+            
+            # Write process, [batch size, memory size, memory value state dim]
+            # qa : [batch size, memory value state dim]
             qa = tf.squeeze(slice_qa_embed_data[i], 1)
+            # Only last time step value is necessary
+            self.new_memory_value = self.memory.write(self.correlation_weight, qa, reuse=reuse_flag)
 
-            prediction.append(self.prediction_network(q, qa, reuse_flag))
+            mastery_level_prior_difficulty = tf.concat([self.read_content, q], 1)
+            # f_t
+            summary_vector = tf.tanh(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
+            # p_t
+            pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
+
+            prediction.append(pred_logits)
 
         # 'prediction' : seq_len length list of [batch size ,1], make it [batch size, seq_len] tensor
         # tf.stack convert to [batch size, seq_len, 1]
@@ -279,7 +386,6 @@ class Model():
 
         return best_epoch    
             
-    def predict_  
     def test(self, test_q, test_qa):
         steps = test_q.shape[0] // self.args.batch_size
         self.sess.run(tf.global_variables_initializer())
