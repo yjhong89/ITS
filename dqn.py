@@ -11,7 +11,7 @@ class DQN(object):
         self.memory = memory
         self.env = environment
         self.num_actions = self.env.num_actions
-        self.input_shape = self.memory.frame_shape
+        self.input_shape = self.memory.state_shape
 
 
         self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=0.02)

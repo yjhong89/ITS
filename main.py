@@ -54,7 +54,10 @@ def main():
         run_config.gpu_options.allow_growth = True
 
         with tf.Session(config=run_config) as sess:
-            myAgent = SimpleAgent(myArgs, sess)
+            if myArgs.env_name == 'CartPole-v0':
+                myAgent = SimpleAgent(myArgs, sess)
+            elif myArgs.env_name == 'DKVMN':
+                myAgent = DKVMNAgent(myArgs, sess)
 
             if myArgs.train:
                 myAgent.train()

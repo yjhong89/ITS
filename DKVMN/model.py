@@ -13,37 +13,11 @@ class Model():
         self.name = name
         self.sess = sess
 
-        '''
-
-        # Initialize Memory
-        with tf.variable_scope('Memory'):
-            init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
-                initializer=tf.truncated_normal_initializer(stddev=0.1))
-            init_memory_value = tf.get_variable('value', [self.args.memory_size,self.args.memory_value_state_dim], \
-                initializer=tf.truncated_normal_initializer(stddev=0.1))
-
-        # Broadcast memory value tensor to match [batch size, memory size, memory state dim]
-        # First expand dim at axis 0 so that makes 'batch size' axis and tile it along 'batch size' axis
-        # tf.tile(inputs, multiples) : multiples length must be thes saame as the number of dimensions in input
-        # tf.stack takes a list and convert each element to a tensor
-        init_memory_value = tf.tile(tf.expand_dims(init_memory_value, 0), tf.stack([self.args.batch_size, 1, 1]))
-        print(init_memory_value.get_shape())
-                
-        self.memory = DKVMN(self.args.memory_size, self.args.memory_key_state_dim, \
-                self.args.memory_value_state_dim, init_memory_key=init_memory_key, init_memory_value=init_memory_value, name='DKVMN')
-
-        # Embedding to [batch size, seq_len, memory_state_dim(d_k or d_v)]
-        with tf.variable_scope('Embedding'):
-            # A
-            self.q_embed_mtx = tf.get_variable('q_embed', [self.args.n_questions+1, self.args.memory_key_state_dim],\
-                initializer=tf.truncated_normal_initializer(stddev=0.1))
-            # B
-            self.qa_embed_mtx = tf.get_variable('qa_embed', [2*self.args.n_questions+1, self.args.memory_value_state_dim], initializer=tf.truncated_normal_initializer(stddev=0.1))        
-        '''
-
-        #self.prediction = self.build_network(reuse_flag=False)
-        #self.build_optimizer()
         self.create_model()
+
+
+    def print_info(self):
+        print('This is a Dynamic Key Value Memory Netowrk')
     
     def prediction_network(self, q, qa, reuse_flag):
         #print('Building network')
@@ -64,14 +38,7 @@ class Model():
 
         return pred_logits
         
-
-    def create_model(self):
-        # 'seq_len' means question sequences
-        self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
-        self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
-        self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
-          
-        # Initialize Memory
+    def memory_network(self):
         with tf.variable_scope('Memory'):
             init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
@@ -84,8 +51,17 @@ class Model():
         init_memory_value = tf.tile(tf.expand_dims(init_memory_value, 0), tf.stack([self.args.batch_size, 1, 1]))
         print(init_memory_value.get_shape())
                 
-        self.memory = DKVMN(self.args.memory_size, self.args.memory_key_state_dim, \
+        return DKVMN(self.args.memory_size, self.args.memory_key_state_dim, \
                 self.args.memory_value_state_dim, init_memory_key=init_memory_key, init_memory_value=init_memory_value, name='DKVMN')
+
+    def create_model(self):
+        # 'seq_len' means question sequences
+        self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
+        self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
+        self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
+          
+        self.memory = self.memory_network()
+            
 
         # Embedding to [batch size, seq_len, memory_state_dim(d_k or d_v)]
         with tf.variable_scope('Embedding'):
@@ -279,7 +255,6 @@ class Model():
 
         return best_epoch    
             
-    def predict_  
     def test(self, test_q, test_qa):
         steps = test_q.shape[0] // self.args.batch_size
         self.sess.run(tf.global_variables_initializer())

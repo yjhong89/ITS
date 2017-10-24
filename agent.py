@@ -35,9 +35,9 @@ class Agent(object):
         for self.step in tqdm(range(1, self.args.max_step+1), ncols=70, initial=0):
             action = self.select_action()
 
-            next_frame, reward, terminal = self.env.act(action)
-            self.memory.add(action, reward, terminal, next_frame)
-            self.process_state(next_frame)
+            next_state, reward, terminal = self.env.act(action)
+            self.memory.add(action, reward, terminal, next_state)
+            self.process_state(next_state)
             
             episode_reward += reward 
             if terminal:
@@ -83,8 +83,8 @@ class Agent(object):
             terminal = False
             while not terminal:
                 action = self.select_action()
-                next_frame, reward, terminal = self.env.act(action)
-                self.process_state(next_frame)
+                next_state, reward, terminal = self.env.act(action)
+                self.process_state(next_state)
 
                 current_reward += reward
                 if terminal:
@@ -140,11 +140,21 @@ class Agent(object):
 class SimpleAgent(Agent):
     def __init__(self, args, sess):
         self.env = SimpleEnvironment(args)
-        self.memory = SimpleMemory(args, self.env.frame_shape)
+        # what does mean state_shape
+        self.memory = SimpleMemory(args, self.env.state_shape)
+        print('FRAME_SHAPE : ')
+        print(self.env.state_shape)
         super(SimpleAgent, self).__init__(args, sess)
 
     def reset_episode(self):
         self.state = self.env.new_episode()
 
-    def process_state(self, next_frame):
-        self.state = next_frame
+    def process_state(self, next_state):
+        self.state = next_state
+
+
+class DKVMNAgent(Agent):
+    def __init__(self, args, sess):
+        self.env = DKVMNEnvironment(args)
+        self.memory = DKVMNMemory(args)
+        super(DKVMNAgent, self).__init__(args, sess)

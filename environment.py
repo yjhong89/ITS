@@ -13,7 +13,7 @@ class SimpleEnvironment(Environment):
         super(SimpleEnvironment, self).__init__(args)
         self.env = gym.make(self.args.env_name)
         self.num_actions = self.env.action_space.n
-        self.frame_shape = list(self.env.observation_space.shape)
+        self.state_shape = list(self.env.observation_space.shape)
 
     def new_episode(self):
         return self.env.reset()
@@ -36,3 +36,4 @@ class DKVMNEnvironment(Environment):
 
     def act(self, action):
         return False 
+
