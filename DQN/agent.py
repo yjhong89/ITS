@@ -114,7 +114,7 @@ class Agent(object):
 
     @property
     def model_dir(self):
-        return '{}_{}batch'.format(self.args.env_name, self.args.batch_size)
+        return '{}_{}batch'.format(self.args.env_name, self.args.batch_size_dqn)
             
             
     def save(self):
@@ -140,10 +140,7 @@ class Agent(object):
 class SimpleAgent(Agent):
     def __init__(self, args, sess):
         self.env = SimpleEnvironment(args)
-        # what does mean state_shape
         self.memory = SimpleMemory(args, self.env.state_shape)
-        print('FRAME_SHAPE : ')
-        print(self.env.state_shape)
         super(SimpleAgent, self).__init__(args, sess)
 
     def reset_episode(self):
@@ -158,3 +155,11 @@ class DKVMNAgent(Agent):
         self.env = DKVMNEnvironment(args)
         self.memory = DKVMNMemory(args)
         super(DKVMNAgent, self).__init__(args, sess)
+
+    def reset_episode(self):
+        print('reset_episode is not implemented')
+        return False
+
+    def process_state(self, net_state):
+        print('process_state is not implemented')
+        return False

@@ -1,6 +1,8 @@
 import gym
 import numpy as np
 
+#from DKVMN.dkvmn_model import *
+
 class Environment(object):
     def __init__(self, args):
         self.args = args
@@ -27,13 +29,16 @@ class SimpleEnvironment(Environment):
 class DKVMNEnvironment(Environment):
     def __init__(self, args):
         super(DKVMNEnvironment, self).__init__(args)
-        '''
-        self.env = 
-        self.num_actions = 
-        '''
+
+        self.env = DKVMNModel() 
+        self.env.print_info()
+        #self.num_actions = 
+
     def new_episode(self):
+        print('new_episode is not implemented')
         return False
 
     def act(self, action):
+        print('act is not implemented')
         return False 
 

@@ -25,12 +25,13 @@ class ReplayMemory(object):
 class SimpleMemory(ReplayMemory):
     def __init__(self, args, state_shape):
         super(SimpleMemory, self).__init__(args, state_shape)
-        self.prestates = np.empty([self.args.batch_size] + self.state_shape, dtype=np.float32)
-        self.poststates = np.empty([self.args.batch_size] + self.state_shape, dtype=np.float32)
+        # why these states are in SimpleMemory?
+        self.prestates = np.empty([self.args.batch_size_dqn] + self.state_shape, dtype=np.float32)
+        self.poststates = np.empty([self.args.batch_size_dqn] + self.state_shape, dtype=np.float32)
 
     def mini_batch(self):
         batch_indices = []
-        while len(batch_indices) < self.args.batch_size:
+        while len(batch_indices) < self.args.batch_size_dqn:
             while True:
                 idx = np.random.randint(low=1, high=self.count)
                 if idx == self.current:
@@ -49,4 +50,10 @@ class SimpleMemory(ReplayMemory):
          
 class DKVMNMemory(ReplayMemory):
     def __init__(self, args, state_shape):
-        super(DKVMNMemory, self).__ini__(args, state_shpe)
+        super(DKVMNMemory, self).__init__(args, state_shpe)
+        self.prestates = np.empty([self.args.batch_size_dqn] + self.state_shape, dtype=np.float32)
+        self.poststates = np.empty([self.args.batch_size_dqn] + self.state_shape, dtype=np.float32)
+
+    def mini_batch(self):
+        print('mini_batch is not implemented')
+        return False

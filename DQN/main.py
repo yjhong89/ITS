@@ -1,4 +1,3 @@
-##### Intelligent Tutoring System #####
 import tensorflow as tf
 
 import argparse, os, sys
@@ -16,22 +15,11 @@ def main():
         parser = argparse.ArgumentParser()
         #parser.add_argument('--', type=, default=)
 
-        ##### Control flag #####
-        parser.add_argument('--train_dkvmn', type=str2bool, default='f')
-        parser.add_argument('--test_dkvmn', type=str2bool, default='f')
-        parser.add_argument('--train_agent', type=str2bool, default='f')
-        parser.add_argument('--test_agent', type=str2bool, default='f')
-        
-        ##### DKVMN #####
-
-
-
-        ##### DQN ##### 
-        parser.add_argument('--env_name', type=str, default='DKVMN')
+        parser.add_argument('--env_name', type=str, default='CartPole-v0', help='CartPole-v0, DKVMN')
         #parser.add_argument('--simple', type=str2bool, default='false')
 
-        #parser.add_argument('--train', type=str2bool, default='true')
-        parser.add_argument('--batch_size', type=int, default=32)
+        parser.add_argument('--train', type=str2bool, default='true')
+        parser.add_argument('--batch_size_dqn', type=int, default=32)
         parser.add_argument('--max_step', type=int, default=10000000)
         parser.add_argument('--max_exploration_step', type=int, default=1000000)
 

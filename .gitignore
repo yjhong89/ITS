@@ -6,3 +6,4 @@ DKVMN/*.swp
 DKVMN/logs
 DKVMN/__pycache__
 DKVMN/checkpoint
+toy.py
