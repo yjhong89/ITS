@@ -151,6 +151,8 @@ def main():
             if myArgs.env_name == 'CartPole-v0':
                 myAgent = SimpleAgent(myArgs, sess)
             elif myArgs.env_name == 'DKVMN':
+                sess.run(tf.global_variables_initializer()) 
+                dkvmn.load()
                 myAgent = DKVMNAgent(myArgs, sess, dkvmn)
 
             if myArgs.dqn_train:

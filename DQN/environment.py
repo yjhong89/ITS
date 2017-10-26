@@ -31,7 +31,12 @@ class DKVMNEnvironment(Environment):
     def __init__(self, args, sess, dkvmn):
         super(DKVMNEnvironment, self).__init__(args)
 
+        self.sess = sess
+
         self.env = dkvmn 
+        dkvmn.args.seq_len = 1
+        dkvmn.args.batch_size = 1
+
         self.env.print_info()
         self.state_shape = self.env.get_value_memory_shape()
         print('State shape')
@@ -43,10 +48,9 @@ class DKVMNEnvironment(Environment):
         return False
 
     def act(self, action):
-        print('\nact is not implemented\n')
-        ## dkvmn predict + value_memory_update
-        #return self.evn.k(act)
+        #print('\nact is not implemented\n')
 
+        self.state = self.sess.run(self.env.updated_value_memory, self.env.value_memory_difference, feed_dict={self.env.q_data_seq:action})
 
 
     def random_action(self):
