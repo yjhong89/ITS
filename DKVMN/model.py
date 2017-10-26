@@ -30,7 +30,8 @@ class Model():
         
     def update_value_memory(self, qa, correlation_weight, reuse_flag):
         #print('updated_value_memory')
-        self.new_memory_value = self.memory.write(correlation_weight, qa, reuse=reuse_flag)
+        self.memory.write(correlation_weight, qa, reuse=reuse_flag)
+        #self.new_memory_value = self.memory.write(correlation_weight, qa, reuse=reuse_flag)
         
 
     def predict_hit_probability(self, q, correlation_weight, reuse_flag):
@@ -45,6 +46,7 @@ class Model():
 
         return pred_logits
 
+    '''
     def prediction_network(self, q, qa, reuse_flag):
         #print('Building network')
 
@@ -63,8 +65,9 @@ class Model():
         pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
 
         return pred_logits
+    '''
         
-    def memory_network(self):
+    def create_memory(self):
         with tf.variable_scope('Memory'):
             init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
@@ -86,7 +89,7 @@ class Model():
         self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
         self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
           
-        self.memory = self.memory_network()
+        self.memory = self.create_memory()
             
 
         # Embedding to [batch size, seq_len, memory_state_dim(d_k or d_v)]
