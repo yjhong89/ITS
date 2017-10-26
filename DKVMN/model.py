@@ -25,21 +25,33 @@ class Model():
         print('This is a Dynamic Key Value Memory Netowrk')
     
 
-    """
     def get_correlation_weight(self, q):
+        return self.memory.attention(q)
         
-    def update_value_memory(self, qa, corrleation_weight):
+    def update_value_memory(self, qa, correlation_weight, reuse_flag):
+        #print('updated_value_memory')
+        self.new_memory_value = self.memory.write(correlation_weight, qa, reuse=reuse_flag)
+        
 
-    def predict_hit_probability(self, q, correlation_weight:  
-    """
+    def predict_hit_probability(self, q, correlation_weight, reuse_flag):
+        #print('predict_hit_probability')
+        self.read_content = self.memory.read(correlation_weight)
+
+        mastery_level_prior_difficulty = tf.concat([self.read_content, q], 1)
+        # f_t
+        summary_vector = tf.tanh(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
+        # p_t
+        pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
+
+        return pred_logits
 
     def prediction_network(self, q, qa, reuse_flag):
         #print('Building network')
 
         # Attention, [batch size, memory size]
-        self.correlation_weight = self.memory.attention(q)
         
         # Read process, [batch size, memory value state dim]
+        self.correlation_weight = self.get_correlation_weight(q)
         self.read_content = self.memory.read(self.correlation_weight)
 
         self.new_memory_value = self.memory.write(self.correlation_weight, qa, reuse=reuse_flag)
@@ -109,7 +121,13 @@ class Model():
             q = tf.squeeze(slice_q_embed_data[i], 1)
             qa = tf.squeeze(slice_qa_embed_data[i], 1)
 
-            prediction.append(self.prediction_network(q, qa, reuse_flag))
+            correlation_weight = self.get_correlation_weight(q)
+                
+            prediction.append(self.predict_hit_probability(q, correlation_weight, reuse_flag))
+            self.update_value_memory(qa, correlation_weight, reuse_flag)
+
+            #prediction.append(self.prediction_network(q, qa, reuse_flag))
+                
 
         # 'prediction' : seq_len length list of [batch size ,1], make it [batch size, seq_len] tensor
         # tf.stack convert to [batch size, seq_len, 1]
@@ -163,9 +181,9 @@ class Model():
             else:
                 print('No checkpoint')
         else:
-            if os.path.exists(os.path.join(self.args.checkpoint_dir, self.model_dir)):
+            if os.path.exists(os.path.join(self.args.dkvmn_checkpoint_dir, self.model_dir)):
                 try:
-                    shutil.rmtree(os.path.join(self.args.checkpoint_dir, self.model_dir))
+                    shutil.rmtree(os.path.join(self.args.dkvmn_checkpoint_dir, self.model_dir))
                     shutil.rmtree(os.path.join(self.args.log_dir, self.model_dir+'.csv'))
                 except(FileNotFoundError, IOError) as e:
                     print('[Delete Error] %s - %s' % (e.filename, e.strerror))
@@ -332,7 +350,7 @@ class Model():
 
     def save(self, global_step):
         model_name = 'DKVMN'
-        checkpoint_dir = os.path.join(self.args.checkpoint_dir, self.model_dir)
+        checkpoint_dir = os.path.join(self.args.dkvmn_checkpoint_dir, self.model_dir)
         if not os.path.exists(checkpoint_dir):
             os.mkdir(checkpoint_dir)
         self.saver.save(self.sess, os.path.join(checkpoint_dir, model_name), global_step=global_step)
@@ -340,7 +358,7 @@ class Model():
 
     # Log file
     def write_log(self, auc, accuracy, loss, epoch, name='training_'):
-        log_path = os.path.join(self.args.log_dir, name+self.model_dir+'.csv')
+        log_path = os.path.join(self.args.dkvmn_log_dir, name+self.model_dir+'.csv')
         if not os.path.exists(log_path):
             self.log_file = open(log_path, 'w')
             self.log_file.write('Epoch\tAuc\tAccuracy\tloss\n')

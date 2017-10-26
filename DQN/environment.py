@@ -45,7 +45,7 @@ class DKVMNEnvironment(Environment):
     def act(self, action):
         print('\nact is not implemented\n')
         ## dkvmn predict + value_memory_update
-        return self.evn.k(act)
+        #return self.evn.k(act)
 
 
 
