@@ -23,7 +23,7 @@ def main():
         parser.add_argument('--max_step', type=int, default=10000000)
         parser.add_argument('--max_exploration_step', type=int, default=1000000)
 
-        parser.add_argument('--memory_size', type=int, default=10000)
+        parser.add_argument('--replay_memory_size', type=int, default=10000)
 
         parser.add_argument('--discount_factor', type=float, default=0.95)
         parser.add_argument('--eps_init', type=float, default=1.0)

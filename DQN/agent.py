@@ -16,7 +16,7 @@ class Agent(object):
         self.dqn = DQN(self.args, self.sess, self.memory, self.env)
 
         self.saver = tf.train.Saver()
-        self.logger = Logger(os.path.join(self.args.log_dir, self.model_dir))
+        self.logger = Logger(os.path.join(self.args.dqn_log_dir, self.model_dir))
 
         self.sess.run(tf.global_variables_initializer())
 
@@ -98,9 +98,9 @@ class Agent(object):
 
 
     def select_action(self):
-        if self.args.train:
+        if self.args.dqn_train:
             self.eps = np.max([self.args.eps_min, self.args.eps_init - (self.args.eps_init - self.args.eps_min)*(float(self.step)/float(self.args.max_exploration_step))])
-        else:
+        elif self.args.dqn_test:
             self.eps = self.args.eps_test
 
 
@@ -126,7 +126,7 @@ class Agent(object):
 
     def load(self):
         print('Loading checkpoint ...')
-        checkpoint_dir = os.path.join(self.args.checkpoint_dir, self.model_dir)
+        checkpoint_dir = os.path.join(self.args.dqn_checkpoint_dir, self.model_dir)
         checkpoint_state = tf.train.get_checkpoint_state(checkpoint_dir)
         if checkpoint_state and checkpoint_state.model_checkpoint_path:
             checkpoint_model = os.path.basename(checkpoint_state.model_checkpoint_path)
@@ -151,9 +151,9 @@ class SimpleAgent(Agent):
 
 
 class DKVMNAgent(Agent):
-    def __init__(self, args, sess):
-        self.env = DKVMNEnvironment(args)
-        self.memory = DKVMNMemory(args)
+    def __init__(self, args, sess, dkvmn):
+        self.env = DKVMNEnvironment(args, sess, dkvmn)
+        self.memory = DKVMNMemory(args, self.env.state_shape)
         super(DKVMNAgent, self).__init__(args, sess)
 
     def reset_episode(self):

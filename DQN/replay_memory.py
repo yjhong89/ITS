@@ -7,10 +7,10 @@ class ReplayMemory(object):
         self.count = 0
         self.current = 0
 
-        self.actions = np.empty(self.args.memory_size, dtype=np.uint8)
-        self.rewards= np.empty(self.args.memory_size, dtype=np.float32)
-        self.terminals = np.empty(self.args.memory_size, dtype=np.bool)
-        self.next_states = np.empty([self.args.memory_size] + self.state_shape, dtype=np.float32)
+        self.actions = np.empty(self.args.replay_memory_size, dtype=np.uint8)
+        self.rewards= np.empty(self.args.replay_memory_size, dtype=np.float32)
+        self.terminals = np.empty(self.args.replay_memory_size, dtype=np.bool)
+        self.next_states = np.empty([self.args.replay_memory_size] + self.state_shape, dtype=np.float32)
 
 
     def add(self, action, reward, terminal, next_state):
@@ -20,7 +20,7 @@ class ReplayMemory(object):
         self.next_states[self.current] = next_state 
 
         self.count = max(self.count, self.current+1)
-        self.current = (self.current+1) % self.args.memory_size
+        self.current = (self.current+1) % self.args.replay_memory_size
 
 class SimpleMemory(ReplayMemory):
     def __init__(self, args, state_shape):
@@ -50,7 +50,7 @@ class SimpleMemory(ReplayMemory):
          
 class DKVMNMemory(ReplayMemory):
     def __init__(self, args, state_shape):
-        super(DKVMNMemory, self).__init__(args, state_shpe)
+        super(DKVMNMemory, self).__init__(args, state_shape)
         self.prestates = np.empty([self.args.batch_size_dqn] + self.state_shape, dtype=np.float32)
         self.poststates = np.empty([self.args.batch_size_dqn] + self.state_shape, dtype=np.float32)
 

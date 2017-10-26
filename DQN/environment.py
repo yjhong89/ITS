@@ -1,14 +1,13 @@
 import gym
 import numpy as np
+import random
 
-#from DKVMN.dkvmn_model import *
+#from model import *
 
 class Environment(object):
     def __init__(self, args):
         self.args = args
 
-    def random_action(self):
-        return self.env.action_space.sample()
         
 class SimpleEnvironment(Environment):
     def __init__(self, args):
@@ -25,20 +24,31 @@ class SimpleEnvironment(Environment):
 
         return self.state, self.reward, self.terminal
 
+    def random_action(self):
+        return self.env.action_space.sample()
 
 class DKVMNEnvironment(Environment):
-    def __init__(self, args):
+    def __init__(self, args, sess, dkvmn):
         super(DKVMNEnvironment, self).__init__(args)
 
-        self.env = DKVMNModel() 
+        self.env = dkvmn 
         self.env.print_info()
-        #self.num_actions = 
+        self.state_shape = self.env.get_value_memory_shape()
+        print('State shape')
+        print(self.state_shape)
+        self.num_actions = self.env.get_n_questions()
 
     def new_episode(self):
-        print('new_episode is not implemented')
+        print('\nnew_episode is not implemented\n')
         return False
 
     def act(self, action):
-        print('act is not implemented')
-        return False 
+        print('\nact is not implemented\n')
+        ## dkvmn predict + value_memory_update
+        return self.evn.k(act)
 
+
+
+    def random_action(self):
+        return random.randrange(1, self.num_actions+1)
+        

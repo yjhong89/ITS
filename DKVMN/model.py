@@ -15,10 +15,24 @@ class Model():
 
         self.create_model()
 
+    def get_value_memory_shape(self):
+        return [self.args.memory_size, self.args.memory_value_state_dim]
+
+    def get_n_questions(self):
+        return self.args.n_questions
 
     def print_info(self):
         print('This is a Dynamic Key Value Memory Netowrk')
     
+
+    """
+    def get_correlation_weight(self, q):
+        
+    def update_value_memory(self, qa, corrleation_weight):
+
+    def predict_hit_probability(self, q, correlation_weight:  
+    """
+
     def prediction_network(self, q, qa, reuse_flag):
         #print('Building network')
 
@@ -306,7 +320,7 @@ class Model():
         return '{}_{}batch_{}epochs'.format(self.args.dataset, self.args.batch_size, self.args.num_epochs)
 
     def load(self):
-        checkpoint_dir = os.path.join(self.args.checkpoint_dir, self.model_dir)
+        checkpoint_dir = os.path.join(self.args.dkvmn_checkpoint_dir, self.model_dir)
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
             ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
