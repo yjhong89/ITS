@@ -50,7 +50,19 @@ class DKVMNEnvironment(Environment):
     def act(self, action):
         #print('\nact is not implemented\n')
 
-        self.state = self.sess.run(self.env.updated_value_memory, self.env.value_memory_difference, feed_dict={self.env.q_data_seq:action})
+        #action = np.array(action, type=np.int32)
+        action = np.array(action)
+        action.astype(np.int32)
+        action = np.expand_dims(action, axis=0)
+        action = np.expand_dims(action, axis=0)
+        print('ACTION SHAPE')
+        print(action.shape)
+        print(action.dtype)
+
+        #self.state = self.sess.run(self.env.updated_value_memory, self.env.value_memory_difference, feed_dict={self.env.q_data_seq:action})
+        self.reward = self.sess.run(self.env.value_memory_difference, feed_dict={self.env.q_data_seq:action})
+        print('REWARD : ')
+        print(reward)
 
 
     def random_action(self):

@@ -18,6 +18,9 @@ class Model():
     def get_value_memory_shape(self):
         return [self.args.memory_size, self.args.memory_value_state_dim]
 
+    def get_value_memory(self):
+        return self.memory.memory_value
+
     
     def get_n_questions(self):
         return self.args.n_questions
@@ -35,68 +38,17 @@ class Model():
         threshold = tf.random_uniform(pred_prob.shape)
         a = tf.cast(tf.less(threshold, pred_prob), tf.int32)
 
-        '''
-        print('q shape')
-        print(q.shape)
-
-        print('a shape')
-        print(a.shape)
-
-        print('mul shape')
-        print(tf.multiply(a, self.args.n_questions).shape)
-        '''
-
         qa = q + tf.multiply(a, self.args.n_questions)[0]
-        '''
-        print('qa shape')
-        print(qa.shape)
-        '''
-        
-        # smaple a from pred_logits 
-        #print('\n Pred_prob \n')
-        #print(pred_prob.shape)
-        '''
-        l = tf.less(tf.random_uniform(pred_prob.shape), pred_prob)
-        print('\n L Shape \n')
-        print(l.shape)
-        '''
-        
-        #print('\n ones_like \n')
-        #print(tf.ones_like(pred_prob).shape)
 
-        #a = []
-        #qa = tf.get_variable(name='qa',shape=q.shape, trainable=False)  
-
-        '''
-        
-        for i in range(pred_prob.shape[0]):
-            #l = tf.less(tf.random_uniform([1]), pred_prob[i][0])
-            #print('\n L Shape \n')
-            #print(l.shape)
-            a = tf.cond(tf.less(tf.random_uniform([1]),  pred_prob[i][0])[0], lambda: tf.constant(1), lambda: tf.constant(0))
-            tf.assign(qa[i] , q[i] + a * self.args.n_questions)
-            #a.append(tf.cond(tf.less(tf.random_uniform([1]),  pred_prob[i][0])[0], lambda: tf.constant(1), lambda: tf.constant(0)))
-            
-
-        #a = tf.cond(tf.less(tf.random_uniform(pred_prob.shape),  pred_prob), lambda: tf.ones_like(pred_prob), lambda: tf.zeros_like(pred_prob))
-        '''
-        '''
-        if tf.less(tf.random_uniform([1]),  pred_prob):
-            a = 1
-        else:
-            a = 0
-        '''
-
-        # merge q and a  to qa 
-        return self.embedding_qa(qa) 
-
-        #value_memroy = self.memory.memory_value
-        
         # state
         #self.updated_value_memory = self.update_value_memory(qa, correlation_weight, reuse_flag = True)
    
         # reward 
         #self.value_memory_difference = tf.reduce_sum(self.updated_value_memory - value_memory)
+
+        return self.embedding_qa(qa) 
+
+        
 
         
 
@@ -157,29 +109,20 @@ class Model():
     
     def create_model(self):
         # 'seq_len' means question sequences
+        self.q_data_seq = tf.placeholder(tf.int32, [None, None], name='q_data_seq') 
+        self.qa_data_seq = tf.placeholder(tf.int32, [None, None], name='qa_data')
+        self.target_seq = tf.placeholder(tf.float32, [None, None], name='target')
+
+        '''
         self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
         self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
         self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
+        '''
         self.pretrain = tf.placeholder_with_default(tf.constant(True), [])
           
         self.memory = self.create_memory()
-        self.embedding_mtx = self.init_embedding_mtx()
+        self.init_embedding_mtx()
             
-
-        '''
-        # Embedding to [batch size, seq_len, memory key state dim]
-        q_embed_data = tf.nn.embedding_lookup(q_embed_mtx, self.q_data_seq)
-        # List of [batch size, 1, memory key state dim] with 'seq_len' elements
-        #print('Q_embedding shape : %s' % q_embed_data.get_shape())
-        slice_q_embed_data = tf.split(q_embed_data, self.args.seq_len, 1)
-        #print(len(slice_q_embed_data), type(slice_q_embed_data), slice_q_embed_data[0].get_shape())
-        # Embedding to [batch size, seq_len, memory value state dim]
-        qa_embed_data = tf.nn.embedding_lookup(qa_embed_mtx, self.qa_data_seq)
-        #print('QA_embedding shape: %s' % qa_embed_data.get_shape())
-        # List of [batch size, 1, memory value state dim] with 'seq_len' elements
-        slice_qa_embed_data = tf.split(qa_embed_data, self.args.seq_len, 1)
-        '''
-
         slice_q_data = tf.split(self.q_data_seq, self.args.seq_len, 1) 
         slice_qa_data = tf.split(self.qa_data_seq, self.args.seq_len, 1) 
 
@@ -187,17 +130,13 @@ class Model():
         prediction = list()
         reuse_flag = False
 
-        value_memroy = self.memory.memory_value
+        prev_value_memory = self.memory.memory_value
         
         # Logics
         for i in range(self.args.seq_len):
             # To reuse linear vectors
             if i != 0:
                 reuse_flag = True
-            '''
-            q = tf.squeeze(slice_q_embed_data[i], 1)
-            qa = tf.squeeze(slice_qa_embed_data[i], 1)
-            '''
 
             q = tf.squeeze(slice_q_data[i], 1)
             qa = tf.squeeze(slice_qa_data[i], 1)
@@ -209,7 +148,7 @@ class Model():
                 
             prediction.append(self.predict_hit_probability(q_embed, correlation_weight, reuse_flag))
 
-            # rename qa
+            # pretrain = True when DQN is playing
             qa_embed = tf.cond(self.pretrain, lambda:qa_embed, lambda: self.update_value_memory_with_sampling_a_given_q(q))
 
             self.update_value_memory(qa_embed, correlation_weight, reuse_flag)
@@ -219,8 +158,7 @@ class Model():
         #self.updated_value_memory = self.update_value_memory(qa, correlation_weight, reuse_flag = True)
    
         # reward 
-        #self.value_memory_difference = tf.reduce_sum(self.updated_value_memory - value_memory)
-            #prediction.append(self.prediction_network(q, qa, reuse_flag))
+        self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - prev_value_memory)
                 
 
         # 'prediction' : seq_len length list of [batch size ,1], make it [batch size, seq_len] tensor
