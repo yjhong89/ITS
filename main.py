@@ -42,6 +42,9 @@ def setHyperParamsForDataset(args):
         args.final_fc_dim = 50
         args.n_questions = 100
         args.seq_len = 200
+    if args.dqn_train is True:
+        args.batch_size = 1
+        args.seq_len = 1
 
 def main():
     try:
@@ -50,11 +53,11 @@ def main():
         ########## Control flag ##########
         parser.add_argument('--dkvmn_train', type=str2bool, default='f')
         parser.add_argument('--dkvmn_test', type=str2bool, default='f')
-        parser.add_argument('--dqn_train', type=str2bool, default='f')
+        parser.add_argument('--dqn_train', type=str2bool, default='t')
         parser.add_argument('--dqn_test', type=str2bool, default='f')
         
         ########## DKVMN ##########
-        parser.add_argument('--dataset', type=str, choices=['synthetic', 'assist2009_updated','assist2015','STATICS'], default='STATICS')
+        parser.add_argument('--dataset', type=str, choices=['synthetic', 'assist2009_updated','assist2015','STATICS'], default='assist2009_updated')
         parser.add_argument('--num_epochs', type=int, default=300)
         parser.add_argument('--init_from', type=str2bool, default='t')
         parser.add_argument('--show', type=str2bool, default='f')

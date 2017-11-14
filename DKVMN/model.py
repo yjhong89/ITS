@@ -32,12 +32,11 @@ class Model():
     def update_value_memory_with_sampling_a_given_q(self, q):
 
         q_embed = self.embedding_q(q)
+        q_embed = tf.squeeze(q_embed, 1)
         correlation_weight = self.get_correlation_weight(q_embed)
         pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, reuse_flag = True))
-
         threshold = tf.random_uniform(pred_prob.shape)
         a = tf.cast(tf.less(threshold, pred_prob), tf.int32)
-
         qa = q + tf.multiply(a, self.args.n_questions)[0]
 
         # state
@@ -46,11 +45,8 @@ class Model():
         # reward 
         #self.value_memory_difference = tf.reduce_sum(self.updated_value_memory - value_memory)
 
-        return self.embedding_qa(qa) 
+        return qa, self.embedding_qa(qa) 
 
-        
-
-        
 
     def get_correlation_weight(self, q):
         return self.memory.attention(q)
@@ -149,7 +145,7 @@ class Model():
             prediction.append(self.predict_hit_probability(q_embed, correlation_weight, reuse_flag))
 
             # pretrain = True when DQN is playing
-            qa_embed = tf.cond(self.pretrain, lambda:qa_embed, lambda: self.update_value_memory_with_sampling_a_given_q(q))
+            #qa_embed = tf.cond(self.pretrain, lambda:qa_embed, lambda: self.update_value_memory_with_sampling_a_given_q(q))
 
             self.update_value_memory(qa_embed, correlation_weight, reuse_flag)
 
@@ -159,7 +155,7 @@ class Model():
    
         # reward 
         self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - prev_value_memory)
-                
+        self.next_state = self.memory.memory_value        
 
         # 'prediction' : seq_len length list of [batch size ,1], make it [batch size, seq_len] tensor
         # tf.stack convert to [batch size, seq_len, 1]

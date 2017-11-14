@@ -103,12 +103,13 @@ class Agent(object):
         elif self.args.dqn_test:
             self.eps = self.args.eps_test
 
-
         if np.random.rand() < self.eps:
             action = self.env.random_action()
+            print('\nRandom action %d' % action)
         else:
             q = self.dqn.predict_Q_value(self.state)[0]
             action = np.argmax(q)
+            print('\nQ value %s and action %d' % action)
         return action 
 
 

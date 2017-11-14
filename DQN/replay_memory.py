@@ -55,5 +55,19 @@ class DKVMNMemory(ReplayMemory):
         self.poststates = np.empty([self.args.batch_size_dqn] + self.state_shape, dtype=np.float32)
 
     def mini_batch(self):
-        print('mini_batch is not implemented')
-        return False
+        batch_indices = []
+        while len(batch_indices) < self.args.batch_size_dqn:
+            while True:
+                idx = np.random.randint(low=1, high=self.count)
+                if idx == self.current:
+                    continue
+                if self.terminals[idx-1]:
+                    continue
+                break
+            self.prestates[len(batch_indices)] = self.next_states[idx-1]
+            self.poststates[len(batch_indices)] = self.next_states[idx]
+            batch_indices.append(idx)
+        actions = self.actions[batch_indices]
+        rewards = self.rewards[batch_indices]
+        terminals = self.rewards[batch_indices]
+        return self.prestates, actions, rewards, terminals, self.poststates
