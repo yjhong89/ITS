@@ -44,7 +44,7 @@ def setHyperParamsForDataset(args):
         args.seq_len = 200
     if args.dqn_train is True:
         args.batch_size = 1
-
+        args.seq_len = 1
 
 def main():
     try:
