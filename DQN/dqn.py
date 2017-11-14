@@ -62,7 +62,9 @@ class DQN(object):
         b_prestates, b_actions, b_rewards, b_terminals, b_poststates = self.memory.mini_batch() 
 
         b_q_poststates = self.sess.run(self.target_Q, feed_dict={self.states : b_poststates})
+        print(b_q_poststates.shape)
         b_max_q = np.max(b_q_poststates, axis=1)
+        print(b_max_q.shape)
 
         feeds = {self.states : b_prestates, self.actions : b_actions, self.rewards : b_rewards, self.terminals : b_terminals, self.max_q : b_max_q}
         return self.sess.run([self.loss, self.optimizer], feed_dict = feeds)
