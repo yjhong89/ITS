@@ -27,7 +27,7 @@ class Agent(object):
         print('Agent is training')
         episode_count = 0
         best_reward = 0
-        episode_reward = 0
+        self.episode_reward = 0
         episode_rewards = []
 
         print('===== Start to make random memory =====')
@@ -38,14 +38,13 @@ class Agent(object):
             next_state, reward, terminal = self.env.act(action)
             self.memory.add(action, reward, terminal, next_state)
             
-            episode_reward += reward 
+            self.episode_reward += reward 
             if terminal:
                 episode_count += 1
-                episode_rewards.append(episode_reward)
-                if episode_reward > best_reward:
-                    best_reward = episode_reward
-                self.logger.log_scalar(tag='reward', value=episode_reward, step=self.step)
-                episode_reward = 0
+                episode_rewards.append(self.episode_reward)
+                if self.episode_reward > best_reward:
+                    best_reward = self.episode_reward
+                self.logger.log_scalar(tag='reward', value=self.episode_reward, step=self.step)
                 self.reset_episode()
 
             if self.step >= self.args.training_start_step:
@@ -161,6 +160,6 @@ class DKVMNAgent(Agent):
     def reset_episode(self):
         self.env.env.prev_value_memory = self.env.initial_ckpt 
         self.env.episode_step = 0
-        print('reset')
-        return False
+        print('Episode rewards :%3.4f' % self.episode_reward)
+        self.episode_reward = 0
 

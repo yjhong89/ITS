@@ -61,7 +61,7 @@ class DKVMNEnvironment(Environment):
         # Need to feed value to self.env.qa_data_seq
         self.reward, self.next_state = self.sess.run([self.env.value_memory_difference, self.env.next_state], feed_dict={self.env.q_data_seq:action, self.env.qa_data_seq:qa})
         self.episode_step += 1
-        if self.episode_step == 50:
+        if self.episode_step == self.args.episode_maxstep:
             terminal = True
         else:
             terminal = False
