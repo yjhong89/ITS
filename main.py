@@ -101,6 +101,7 @@ def main():
         parser.add_argument('--copy_interval', type=int, default=500)
         parser.add_argument('--save_interval', type=int, default=1000)
         parser.add_argument('--show_interval', type=int, default=1000)
+        parser.add_argument('--episode_maxstep', type=int, default=50)
 
         parser.add_argument('--learning_rate', type=float, default=0.001)
 
