@@ -37,9 +37,9 @@ class Agent(object):
 
             next_state, reward, terminal = self.env.act(action)
             self.memory.add(action, reward, terminal, next_state)
-            self.process_state(next_state)
             
             episode_reward += reward 
+            print('Terminal %s' % terminal)
             if terminal:
                 episode_count += 1
                 episode_rewards.append(episode_reward)
@@ -107,9 +107,10 @@ class Agent(object):
             action = self.env.random_action()
             print('\nRandom action %d' % action)
         else:
-            q = self.dqn.predict_Q_value(self.state)[0]
+            print(self.env.next_state.shape)
+            q = self.dqn.predict_Q_value(np.squeeze(self.env.next_state, 0))[0]
             action = np.argmax(q)
-            print('\nQ value %s and action %d' % action)
+            print('\nQ value %s and action %d' % (q,action))
         return action 
 
 
@@ -153,14 +154,14 @@ class SimpleAgent(Agent):
 
 class DKVMNAgent(Agent):
     def __init__(self, args, sess, dkvmn):
+        print('Initializing AGENT')
         self.env = DKVMNEnvironment(args, sess, dkvmn)
         self.memory = DKVMNMemory(args, self.env.state_shape)
         super(DKVMNAgent, self).__init__(args, sess)
 
     def reset_episode(self):
+        self.env.env.prev_value_memory = self.env.initial_ckpt 
+        self.env.episode_step = 0
         print('reset_episode is not implemented')
         return False
 
-    def process_state(self, net_state):
-        print('process_state is not implemented')
-        return False

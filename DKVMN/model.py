@@ -81,7 +81,6 @@ class Model():
         # tf.tile(inputs, multiples) : multiples length must be thes saame as the number of dimensions in input
         # tf.stack takes a list and convert each element to a tensor
         init_memory_value = tf.tile(tf.expand_dims(init_memory_value, 0), tf.stack([self.args.batch_size, 1, 1]))
-        print(init_memory_value.get_shape())
                 
         return DKVMN(self.args.memory_size, self.args.memory_key_state_dim, \
                 self.args.memory_value_state_dim, init_memory_key=init_memory_key, init_memory_value=init_memory_value, name='DKVMN')
@@ -126,7 +125,7 @@ class Model():
         prediction = list()
         reuse_flag = False
 
-        prev_value_memory = self.memory.memory_value
+        self.prev_value_memory = self.memory.memory_value
         
         # Logics
         for i in range(self.args.seq_len):
@@ -154,7 +153,7 @@ class Model():
         #self.updated_value_memory = self.update_value_memory(qa, correlation_weight, reuse_flag = True)
    
         # reward 
-        self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - prev_value_memory)
+        self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - self.prev_value_memory)
         self.next_state = self.memory.memory_value        
 
         # 'prediction' : seq_len length list of [batch size ,1], make it [batch size, seq_len] tensor
@@ -183,8 +182,8 @@ class Model():
         self.train_op = optimizer.apply_gradients(zip(grad, vrbs), global_step=self.global_step)
 #        grad_clip = [(tf.clip_by_value(grad, -self.args.maxgradnorm, self.args.maxgradnorm), var) for grad, var in grads]
         self.tr_vrbs = tf.trainable_variables()
-        for i in self.tr_vrbs:
-            print(i.name)
+#        for i in self.tr_vrbs:
+#            print(i.name)
 
         self.saver = tf.train.Saver()
 
@@ -366,14 +365,17 @@ class Model():
         return '{}_{}batch_{}epochs'.format(self.args.dataset, self.args.batch_size, self.args.num_epochs)
 
     def load(self):
+        self.args.batch_size = 32
         checkpoint_dir = os.path.join(self.args.dkvmn_checkpoint_dir, self.model_dir)
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
             ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
             self.train_count = int(ckpt_name.split('-')[-1])
             self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+            print('DKVMN ckpt loaded')
             return True
         else:
+            print('DKVMN cktp not loaded')
             return False
 
     def save(self, global_step):
