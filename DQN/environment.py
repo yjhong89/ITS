@@ -32,16 +32,16 @@ class DKVMNEnvironment(Environment):
         super(DKVMNEnvironment, self).__init__(args)
 
         self.sess = sess
-
+        print('Initializing ENVIRONMENT')
         self.env = dkvmn 
-        dkvmn.args.seq_len = 1
-        dkvmn.args.batch_size = 1
 
         self.env.print_info()
         self.state_shape = self.env.get_value_memory_shape()
         print('State shape')
         print(self.state_shape)
         self.num_actions = self.env.get_n_questions()
+        self.initial_ckpt = self.env.memory.memory_value
+        self.episode_step = 0
 
     def new_episode(self):
         print('\nnew_episode is not implemented\n')
@@ -60,11 +60,13 @@ class DKVMNEnvironment(Environment):
         #self.state = self.sess.run(self.env.updated_value_memory, self.env.value_memory_difference, feed_dict={self.env.q_data_seq:action})
         # Need to feed value to self.env.qa_data_seq
         self.reward, self.next_state = self.sess.run([self.env.value_memory_difference, self.env.next_state], feed_dict={self.env.q_data_seq:action, self.env.qa_data_seq:qa})
-        # self.env.qa_data_seq:qa})
-        print('REWARD : ')
-        print(self.reward)
-        print(self.next_state)
-        return self.next_state, self.reward, False
+        self.episode_step += 1
+        if self.episode_step == 50:
+            terminal = True
+        else:
+            terminal = False
+        # self.next_state has shape of [?,?,?,?]
+        return np.squeeze(self.next_state,0), self.reward, terminal
 
     def random_action(self):
         return random.randrange(1, self.num_actions+1)

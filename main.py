@@ -42,6 +42,7 @@ def setHyperParamsForDataset(args):
         args.final_fc_dim = 50
         args.n_questions = 100
         args.seq_len = 200
+
     if args.dqn_train is True:
         args.batch_size = 1
         args.seq_len = 1
@@ -97,9 +98,9 @@ def main():
 
         parser.add_argument('--training_start_step', type=int, default=100)
         parser.add_argument('--train_interval', type=int, default=1)
-        parser.add_argument('--copy_interval', type=int, default=5000)
-        parser.add_argument('--save_interval', type=int, default=50000)
-        parser.add_argument('--show_interval', type=int, default=2000)
+        parser.add_argument('--copy_interval', type=int, default=500)
+        parser.add_argument('--save_interval', type=int, default=1000)
+        parser.add_argument('--show_interval', type=int, default=1000)
 
         parser.add_argument('--learning_rate', type=float, default=0.001)
 

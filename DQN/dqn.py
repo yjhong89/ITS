@@ -30,7 +30,7 @@ class DQN(object):
 
     def build_network(self, name):
         with tf.variable_scope(name):
-            fc1 = tf.layers.dense(inputs=self.states, units=10, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer)
+            fc1 = tf.layers.dense(inputs=tf.reshape(self.states, (-1, np.prod(self.input_shape))), units=10, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer)
             Q = tf.layers.dense(inputs=fc1, units=self.num_actions, activation=None, kernel_initializer=self.kernel_initializer)
             return Q
 
@@ -54,6 +54,7 @@ class DQN(object):
         for pred_var, target_var in zip(pred_vars, target_vars):
             copy_op.append(target_var.assign(pred_var.value()))
         self.sess.run(copy_op)
+        print('Copy is done')
 
     def predict_Q_value(self, state):
         return self.sess.run(self.prediction_Q, feed_dict={self.states: [state]})
@@ -62,9 +63,7 @@ class DQN(object):
         b_prestates, b_actions, b_rewards, b_terminals, b_poststates = self.memory.mini_batch() 
 
         b_q_poststates = self.sess.run(self.target_Q, feed_dict={self.states : b_poststates})
-        print(b_q_poststates.shape)
         b_max_q = np.max(b_q_poststates, axis=1)
-        print(b_max_q.shape)
 
         feeds = {self.states : b_prestates, self.actions : b_actions, self.rewards : b_rewards, self.terminals : b_terminals, self.max_q : b_max_q}
         return self.sess.run([self.loss, self.optimizer], feed_dict = feeds)
