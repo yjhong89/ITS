@@ -63,7 +63,7 @@ class Agent(object):
                 if self.step % self.args.show_interval == 0:
                     avg_r = np.mean(episode_rewards)
                     max_r = np.max(episode_rewards)
-                    min_r = np.min(episode_reward)
+                    min_r = np.min(self.episode_rewards)
                     if max_r > best_reward:
                         best_reward = max_r
                     print('\n[recent %d episodes] avg_r: %.4f, max_r: %d, min_r: %d // Best: %d' % (len(episode_rewards), avg_r, max_r, min_r, best_reward))

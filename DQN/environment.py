@@ -40,7 +40,7 @@ class DKVMNEnvironment(Environment):
         print('State shape')
         print(self.state_shape)
         self.num_actions = self.env.get_n_questions()
-        self.initial_ckpt = self.env.memory.memory_value
+        self.initial_ckpt = np.copy(self.env.memory.memory_value)
         self.episode_step = 0
 
     def new_episode(self):
