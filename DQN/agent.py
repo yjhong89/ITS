@@ -39,7 +39,6 @@ class Agent(object):
             self.memory.add(action, reward, terminal, next_state)
             
             episode_reward += reward 
-            print('Terminal %s' % terminal)
             if terminal:
                 episode_count += 1
                 episode_rewards.append(episode_reward)
@@ -120,7 +119,7 @@ class Agent(object):
             
             
     def save(self):
-        checkpoint_dir = os.path.join(self.args.checkpoint_dir, self.model_dir)
+        checkpoint_dir = os.path.join(self.args.dqn_checkpoint_dir, self.model_dir)
         if not os.path.exists(checkpoint_dir):
             os.mkdir(checkpoint_dir)
         self.saver.save(self.sess, os.path.join(checkpoint_dir, str(self.step)))
@@ -162,6 +161,6 @@ class DKVMNAgent(Agent):
     def reset_episode(self):
         self.env.env.prev_value_memory = self.env.initial_ckpt 
         self.env.episode_step = 0
-        print('reset_episode is not implemented')
+        print('reset')
         return False
 
