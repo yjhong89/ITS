@@ -49,8 +49,8 @@ class DQN(object):
         
     def update_target_network(self):
         copy_op = []
-        pred_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pred')
-        target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='target')
+        pred_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dqn/pred')
+        target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dqn/target')
 
         for pred_var, target_var in zip(pred_vars, target_vars):
             copy_op.append(target_var.assign(pred_var.value()))
