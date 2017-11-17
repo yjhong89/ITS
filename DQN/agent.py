@@ -25,7 +25,7 @@ class Agent(object):
 
     def train(self):
         print('Agent is training')
-        episode_count = 0
+        self.episode_count = 0
         best_reward = 0
         self.episode_reward = 0
         episode_rewards = []
@@ -40,7 +40,7 @@ class Agent(object):
             
             self.episode_reward += reward 
             if terminal:
-                episode_count += 1
+                self.episode_count += 1
                 episode_rewards.append(self.episode_reward)
                 if self.episode_reward > best_reward:
                     best_reward = self.episode_reward
@@ -63,7 +63,7 @@ class Agent(object):
                 if self.step % self.args.show_interval == 0:
                     avg_r = np.mean(episode_rewards)
                     max_r = np.max(episode_rewards)
-                    min_r = np.min(episode_reward)
+                    min_r = np.min(episode_rewards)
                     if max_r > best_reward:
                         best_reward = max_r
                     print('\n[recent %d episodes] avg_r: %.4f, max_r: %d, min_r: %d // Best: %d' % (len(episode_rewards), avg_r, max_r, min_r, best_reward))
@@ -111,7 +111,14 @@ class Agent(object):
             print('\nQ value %s and action %d' % (q,action))
         return action 
 
-
+    def write_log(self, episode_count, episode_reward):
+        if not os.path.exists('./train.csv'):
+            train_log = open('./train.csv', 'w')
+            train_log.write('episode\t, total reward\n')
+        else:
+            train_log = open('./train.csv', 'a')
+            train_log.write(str(episode_count) + '\t' + str(episode_reward) +'\n')
+        
     @property
     def model_dir(self):
         return '{}_{}batch'.format(self.args.env_name, self.args.batch_size_dqn)
@@ -156,9 +163,12 @@ class DKVMNAgent(Agent):
         self.env = DKVMNEnvironment(args, sess, dkvmn)
         self.memory = DKVMNMemory(args, self.env.state_shape)
         super(DKVMNAgent, self).__init__(args, sess)
+        for i in tf.trainable_variables():
+            print(i.op.name)
 
     def reset_episode(self):
-        self.env.env.prev_value_memory = self.env.initial_ckpt 
+        self.env.new_episode()
+        self.write_log(self.episode_count, self.episode_reward)
         self.env.episode_step = 0
         print('Episode rewards :%3.4f' % self.episode_reward)
         self.episode_reward = 0

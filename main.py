@@ -86,8 +86,8 @@ def main():
         ########## DQN ##########
         parser.add_argument('--env_name', type=str, choices=['CartPole-v0', 'DKVMN'], default='DKVMN')
         parser.add_argument('--batch_size_dqn', type=int, default=32)
-        parser.add_argument('--max_step', type=int, default=10000000)
-        parser.add_argument('--max_exploration_step', type=int, default=1000000)
+        parser.add_argument('--max_step', type=int, default=100000)
+        parser.add_argument('--max_exploration_step', type=int, default=100000)
 
         parser.add_argument('--replay_memory_size', type=int, default=10000)
 
@@ -98,7 +98,7 @@ def main():
 
         parser.add_argument('--training_start_step', type=int, default=100)
         parser.add_argument('--train_interval', type=int, default=1)
-        parser.add_argument('--copy_interval', type=int, default=500)
+        parser.add_argument('--copy_interval', type=int, default=2000)
         parser.add_argument('--save_interval', type=int, default=1000)
         parser.add_argument('--show_interval', type=int, default=1000)
         parser.add_argument('--episode_maxstep', type=int, default=50)
@@ -126,7 +126,9 @@ def main():
         if not os.path.exists(myArgs.dqn_log_dir):
             os.makedirs(myArgs.dqn_log_dir)
 
+        os.environ["CUDA_VISIBLE_DEVICES"] = '0'
         run_config = tf.ConfigProto()
+        #run_config.log_device_placement = True
         run_config.gpu_options.allow_growth = True
 
         with tf.Session(config=run_config) as sess:
@@ -161,6 +163,8 @@ def main():
                 myAgent = DKVMNAgent(myArgs, sess, dkvmn)
 
             if myArgs.dqn_train:
+                if os.path.exists('./train.csv'):
+                    os.system("rm train.csv")
                 myAgent.train()
             if myArgs.dqn_test:
                 myAgent.play()
