@@ -1,4 +1,5 @@
 import gym
+import tensorflow as tf
 import numpy as np
 import random
 
@@ -37,15 +38,14 @@ class DKVMNEnvironment(Environment):
 
         self.env.print_info()
         self.state_shape = self.env.get_value_memory_shape()
-        print('State shape')
-        print(self.state_shape)
         self.num_actions = self.env.get_n_questions()
         self.initial_ckpt = np.copy(self.env.memory.memory_value)
         self.episode_step = 0
+            
 
     def new_episode(self):
-        print('\nnew_episode is not implemented\n')
-        return False
+        self.env.load()
+        #self.env.memory.memory_value = self.initial_ckpt
 
     def act(self, action):
         #print('\nact is not implemented\n')
@@ -57,7 +57,6 @@ class DKVMNEnvironment(Environment):
         dummy_qa = np.random.randint(0,self.args.n_questions, (1,1))
         qa = self.sess.run(qa, feed_dict={self.env.q_data_seq:action, self.env.qa_data_seq:dummy_qa})
 
-        #self.state = self.sess.run(self.env.updated_value_memory, self.env.value_memory_difference, feed_dict={self.env.q_data_seq:action})
         # Need to feed value to self.env.qa_data_seq
         self.reward, self.next_state = self.sess.run([self.env.value_memory_difference, self.env.next_state], feed_dict={self.env.q_data_seq:action, self.env.qa_data_seq:qa})
         self.episode_step += 1

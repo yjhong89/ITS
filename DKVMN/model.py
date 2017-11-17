@@ -104,9 +104,9 @@ class Model():
     
     def create_model(self):
         # 'seq_len' means question sequences
-        self.q_data_seq = tf.placeholder(tf.int32, [None, None], name='q_data_seq') 
-        self.qa_data_seq = tf.placeholder(tf.int32, [None, None], name='qa_data')
-        self.target_seq = tf.placeholder(tf.float32, [None, None], name='target')
+        self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
+        self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
+        self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
 
         '''
         self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
@@ -182,8 +182,8 @@ class Model():
         self.train_op = optimizer.apply_gradients(zip(grad, vrbs), global_step=self.global_step)
 #        grad_clip = [(tf.clip_by_value(grad, -self.args.maxgradnorm, self.args.maxgradnorm), var) for grad, var in grads]
         self.tr_vrbs = tf.trainable_variables()
-#        for i in self.tr_vrbs:
-#            print(i.name)
+        #for i in self.tr_vrbs:
+        #    print(i.name)
 
         self.saver = tf.train.Saver()
 

@@ -23,8 +23,8 @@ class DQN(object):
         self.terminals = tf.placeholder(tf.float32, [None])
         self.max_q = tf.placeholder(tf.float32, [None])
 
-        self.prediction_Q = self.build_network('pred')
-        self.target_Q = self.build_network('target')
+        self.prediction_Q = self.build_network('dqn/pred')
+        self.target_Q = self.build_network('dqn/target')
 
         self.loss, self.optimizer = self.build_optimizer()
 
@@ -41,7 +41,8 @@ class DQN(object):
         pred_q = tf.reduce_sum(tf.multiply(self.prediction_Q, action_one_hot), reduction_indices=1)
 
         loss = tf.reduce_mean(tf.square(pred_q - target_q))
-        optimizer = tf.train.AdamOptimizer(learning_rate=self.args.learning_rate).minimize(loss)
+        dqn_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dqn/pred')
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.args.learning_rate).minimize(loss, var_list=dqn_var)
 
         return loss, optimizer
 
