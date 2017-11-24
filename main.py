@@ -47,6 +47,10 @@ def setHyperParamsForDataset(args):
         args.batch_size = 1
         args.seq_len = 1
 
+    if args.dkvmn_ideal_test is True:
+        args.batch_size = 1
+        args.seq_len = 1
+
 def main():
     try:
         parser = argparse.ArgumentParser()
@@ -54,8 +58,10 @@ def main():
         ########## Control flag ##########
         parser.add_argument('--dkvmn_train', type=str2bool, default='f')
         parser.add_argument('--dkvmn_test', type=str2bool, default='f')
-        parser.add_argument('--dqn_train', type=str2bool, default='t')
+        parser.add_argument('--dqn_train', type=str2bool, default='f')
         parser.add_argument('--dqn_test', type=str2bool, default='f')
+
+        parser.add_argument('--dkvmn_ideal_test', type=str2bool, default='f')
         
         ########## DKVMN ##########
         parser.add_argument('--dataset', type=str, choices=['synthetic', 'assist2009_updated','assist2015','STATICS'], default='assist2009_updated')
@@ -149,10 +155,13 @@ def main():
                 dkvmn.train(train_q_data, train_qa_data, valid_q_data, valid_qa_data)
 
             if myArgs.dkvmn_test:
-                test_data_path = os.path.join(data_directory, args.dataset + '_test.csv')
+                test_data_path = os.path.join(data_directory, myArgs.dataset + '_test.csv')
                 test_q_data, test_qa_data = data.load_data(test_data_path)
                 print('Test data loaded')
                 dkvmn.test(test_q_data, test_qa_data)
+    
+            if myArgs.dkvmn_ideal_test:
+                dkvmn.ideal_test()
             
             ##### DQN #####
             if myArgs.env_name == 'CartPole-v0':

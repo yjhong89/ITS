@@ -13,6 +13,7 @@ class Model():
         self.name = name
         self.sess = sess
 
+        #with tf.variable_scope('DKVMN'):
         self.create_model()
 
     def get_value_memory_shape(self):
@@ -52,8 +53,10 @@ class Model():
         return self.memory.attention(q)
         
     def update_value_memory(self, qa, correlation_weight, reuse_flag):
-        #print('updated_value_memory')
-        return self.memory.write(correlation_weight, qa, reuse=reuse_flag)
+        print('This is update_value_memory')
+        self.updated_memory = self.memory.write(correlation_weight, qa, reuse=reuse_flag)
+        #return self.memory.write(correlation_weight, qa, reuse=reuse_flag)
+        return self.updated_memory
         
     # TODO : rename predict_hit_logits
     def predict_hit_probability(self, q, correlation_weight, reuse_flag):
@@ -313,7 +316,37 @@ class Model():
                 self.save(best_epoch)
 
         return best_epoch    
-            
+    
+    def ideal_test(self): 
+        
+        if self.load():
+            print('CKPT Loaded')
+        else:
+            raise Exception('CKPT need')
+
+        print(self.updated_memory.shape)
+        #for i in range(10):
+        log_file = open('batch_seqlen.log', 'w')
+
+        for q in range(self.args.n_questions):
+            q = np.expand_dims(np.expand_dims(q, axis=0), axis=0) 
+            qa = q + self.args.n_questions
+    
+            #q_embed = self.embedding_q(q)
+            #qa_embed = self.embedding_qa(qa)
+
+            #correlation_weight = self.get_correlation_weight(q_embed)
+            #self.update_value_memory(qa_embed, correlation_weight, True)
+
+            val_memory, pred = self.sess.run([self.updated_memory, self.pred], feed_dict={self.q_data_seq : q, self.qa_data_seq : qa})
+            log_file.write(str(np.sum(val_memory))+'\n')
+            print(q, qa, np.sum(val_memory), pred)
+        
+        
+        log_file.flush()    
+        
+             
+    
     def test(self, test_q, test_qa):
         steps = test_q.shape[0] // self.args.batch_size
         self.sess.run(tf.global_variables_initializer())

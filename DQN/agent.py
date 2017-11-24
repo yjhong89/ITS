@@ -18,6 +18,12 @@ class Agent(object):
         self.saver = tf.train.Saver()
         self.logger = Logger(os.path.join(self.args.dqn_log_dir, self.model_dir))
 
+        print('Trainalbe_variables of DKVMNAgent')
+        for i in tf.trainable_variables():
+            if "dkvmn" not in i.op.name:
+                print(i.op.name)
+                #self.sess.run(tf.initialize_variables([i]))
+
         self.sess.run(tf.global_variables_initializer())
 
         self.dqn.update_target_network()
@@ -103,7 +109,7 @@ class Agent(object):
 
         if np.random.rand() < self.eps:
             action = self.env.random_action()
-            print('\nRandom action %d' % action)
+            #print('\nRandom action %d' % action)
         else:
             print(self.env.next_state.shape)
             q = self.dqn.predict_Q_value(np.squeeze(self.env.next_state, 0))[0]
@@ -163,8 +169,6 @@ class DKVMNAgent(Agent):
         self.env = DKVMNEnvironment(args, sess, dkvmn)
         self.memory = DKVMNMemory(args, self.env.state_shape)
         super(DKVMNAgent, self).__init__(args, sess)
-        for i in tf.trainable_variables():
-            print(i.op.name)
 
     def reset_episode(self):
         self.env.new_episode()
