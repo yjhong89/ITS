@@ -15,6 +15,7 @@ class Model():
 
         #with tf.variable_scope('DKVMN'):
         self.create_model()
+        self.stepped_value_matrix = self.create_step()
 
     def get_value_memory_shape(self):
         return [self.args.memory_size, self.args.memory_value_state_dim]
@@ -30,12 +31,12 @@ class Model():
         print('This is a Dynamic Key Value Memory Netowrk')
     
 
-    def update_value_memory_with_sampling_a_given_q(self, q):
+    def sampling_a_given_q(self, q, value_matrix):
 
         q_embed = self.embedding_q(q)
-        q_embed = tf.squeeze(q_embed, 1)
+        #q_embed = tf.squeeze(q_embed)
         correlation_weight = self.get_correlation_weight(q_embed)
-        pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, reuse_flag = True))
+        pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, value_matrix, reuse_flag = True))
         threshold = tf.random_uniform(pred_prob.shape)
         a = tf.cast(tf.less(threshold, pred_prob), tf.int32)
         qa = q + tf.multiply(a, self.args.n_questions)[0]
@@ -52,11 +53,13 @@ class Model():
     def get_correlation_weight(self, q):
         return self.memory.attention(q)
         
-    def update_value_memory(self, qa, correlation_weight, reuse_flag):
-        print('This is update_value_memory')
-        self.updated_memory = self.memory.write(correlation_weight, qa, reuse=reuse_flag)
+    def update_value_memory(self, qa, correlation_weight, value_matrix, reuse_flag):
+        #print('This is update_value_memory')
+        #self.updated_memory = self.memory.write(correlation_weight, qa, reuse=reuse_flag)
+        #self.updated_memory = self.memory.value.write(value_matrix, correlation_weight, qa, reuse_flag)
         #return self.memory.write(correlation_weight, qa, reuse=reuse_flag)
-        return self.updated_memory
+        #return self.updated_memory
+        return self.memory.value.write(value_matrix, correlation_weight, qa, reuse_flag)
         
     # TODO : rename predict_hit_logits
     def predict_hit_probability(self, q, correlation_weight, reuse_flag):
@@ -71,22 +74,74 @@ class Model():
 
         return pred_logits
 
+    # TODO : rename predict_hit_logits
+    def predict_hit_probability(self, q, correlation_weight, value_matrix, reuse_flag):
+        #print('predict_hit_probability')
+        #read_content = self.memory.read(correlation_weight)
+        read_content = self.memory.value.read(value_matrix, correlation_weight)
+
+        mastery_level_prior_difficulty = tf.concat([read_content, q], 1)
+        # f_t
+        summary_vector = tf.tanh(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
+        # p_t
+        pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
+
+        return pred_logits
+ 
+    ##### For DQN action
+    ##### q : action
+    ##### value_matrix : state
+    def step(self, q, value_matrix):
+        # 
+        #self.memory.value.write(value_matrix, correlation_weight, qa_embedded, reuse=True)
+        q_embed = self.embedding_q(q)
+        #qa_embed = self.embedding_qa(qa)
+
+        correlation_weight = self.get_correlation_weight(q_embed)
+        qa, qa_embed = sampling_a_given_q(q, value_matrix)
+
+        return self.update_value_memory(qa_embed, correlation_weight, value_matrix, True)
+        #return value_matrix
+        
+    def create_step(self):
+        self.q = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_q') 
+        #self.q = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_q') 
+        self.value_matrix = tf.placeholder(tf.float32, [self.args.memory_size,self.args.memory_value_state_dim], name='step_value_matrix')
+
+        stacked_value_matrix = tf.tile(tf.expand_dims(self.value_matrix, 0), tf.stack([self.args.batch_size, 1, 1]))
+        #self.init_memory_value = tf.get_variable('value', [self.args.memory_size,self.args.memory_value_state_dim], initializer=tf.truncated_normal_initializer(stddev=0.1))
+        # 
+        #self.memory.value.write(value_matrix, correlation_weight, qa_embedded, reuse=True)
+        print(tf.shape(self.q))
+        slice_q = tf.split(self.q, self.args.seq_len, 1) 
+        print(tf.shape(slice_q))
+        q = tf.squeeze(slice_q[0], 1)
+        print(tf.shape(q))
+        q_embed = self.embedding_q(q)
+        print(tf.shape(q_embed))
+        #qa_embed = self.embedding_qa(qa)
+
+        correlation_weight = self.get_correlation_weight(q_embed)
+        qa, qa_embed = self.sampling_a_given_q(q, stacked_value_matrix)
+    #def update_value_memory(self, qa, correlation_weight, value_matrix, reuse_flag):
+        return tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
+        #return self.update_value_memory(qa_embed, correlation_weight, stacked_value_matrix, True)
         
     # TODO : rename init_memory?
     def create_memory(self):
         with tf.variable_scope('Memory'):
             init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
-            init_memory_value = tf.get_variable('value', [self.args.memory_size,self.args.memory_value_state_dim], \
+            self.init_memory_value = tf.get_variable('value', [self.args.memory_size,self.args.memory_value_state_dim], \
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
         # Broadcast memory value tensor to match [batch size, memory size, memory state dim]
         # First expand dim at axis 0 so that makes 'batch size' axis and tile it along 'batch size' axis
         # tf.tile(inputs, multiples) : multiples length must be thes saame as the number of dimensions in input
         # tf.stack takes a list and convert each element to a tensor
-        init_memory_value = tf.tile(tf.expand_dims(init_memory_value, 0), tf.stack([self.args.batch_size, 1, 1]))
+        stacked_init_memory_value = tf.tile(tf.expand_dims(self.init_memory_value, 0), tf.stack([self.args.batch_size, 1, 1]))
                 
         return DKVMN(self.args.memory_size, self.args.memory_key_state_dim, \
-                self.args.memory_value_state_dim, init_memory_key=init_memory_key, init_memory_value=init_memory_value, name='DKVMN')
+                self.args.memory_value_state_dim, init_memory_key=init_memory_key, init_memory_value=stacked_init_memory_value, name='DKVMN')
 
     def init_embedding_mtx(self):
         # Embedding to [batch size, seq_len, memory_state_dim(d_k or d_v)]
@@ -108,6 +163,7 @@ class Model():
     def create_model(self):
         # 'seq_len' means question sequences
         self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
+        print(tf.shape(self.q_data_seq))
         self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
         self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
 
@@ -122,6 +178,7 @@ class Model():
         self.init_embedding_mtx()
             
         slice_q_data = tf.split(self.q_data_seq, self.args.seq_len, 1) 
+        print(tf.shape(slice_q_data))
         slice_qa_data = tf.split(self.qa_data_seq, self.args.seq_len, 1) 
 
         
@@ -137,6 +194,7 @@ class Model():
                 reuse_flag = True
 
             q = tf.squeeze(slice_q_data[i], 1)
+            print(tf.shape(q))
             qa = tf.squeeze(slice_qa_data[i], 1)
 
             q_embed = self.embedding_q(q)
@@ -144,12 +202,12 @@ class Model():
 
             correlation_weight = self.get_correlation_weight(q_embed)
                 
-            prediction.append(self.predict_hit_probability(q_embed, correlation_weight, reuse_flag))
+            prediction.append(self.predict_hit_probability(q_embed, correlation_weight, self.memory.memory_value, reuse_flag))
 
             # pretrain = True when DQN is playing
             #qa_embed = tf.cond(self.pretrain, lambda:qa_embed, lambda: self.update_value_memory_with_sampling_a_given_q(q))
 
-            self.update_value_memory(qa_embed, correlation_weight, reuse_flag)
+            self.memory.memory_value = self.update_value_memory(qa_embed, correlation_weight, self.memory.memory_value, reuse_flag)
 
         
         # state
@@ -324,7 +382,7 @@ class Model():
         else:
             raise Exception('CKPT need')
 
-        print(self.updated_memory.shape)
+        #print(self.updated_memory.shape)
         #for i in range(10):
         log_file = open('batch_seqlen.log', 'w')
 

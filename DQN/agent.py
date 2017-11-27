@@ -111,8 +111,8 @@ class Agent(object):
             action = self.env.random_action()
             #print('\nRandom action %d' % action)
         else:
-            print(self.env.next_state.shape)
-            q = self.dqn.predict_Q_value(np.squeeze(self.env.next_state, 0))[0]
+            print(self.env.value_matrix.shape)
+            q = self.dqn.predict_Q_value(np.squeeze(self.env.value_matrix))[0]
             action = np.argmax(q)
             print('\nQ value %s and action %d' % (q,action))
         return action 
