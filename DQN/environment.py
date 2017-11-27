@@ -73,8 +73,12 @@ class DKVMNEnvironment(Environment):
 
         action = np.asarray(action, dtype=np.int32)
         action = np.expand_dims(np.expand_dims(action, axis=0), axis=0)
-        print('\nThis is act')
-        print(action.shape)
+
+        answer = 0 
+        answer = np.asarray(answer, dtype=np.int32)
+        answer = np.expand_dims(np.expand_dims(answer, axis=0), axis=0)
+        #print('\nThis is act')
+        #print(action.shape)
 
 
         #qa, _ = self.env.update_value_memory_with_sampling_a_given_q(action)
@@ -83,11 +87,12 @@ class DKVMNEnvironment(Environment):
         #qa = self.sess.run(qa, feed_dict={self.env.q_data_seq:action, self.env.qa_data_seq:dummy_qa})
 
         prev_value_matrix = self.value_matrix
-        print('PREV VALUE MATRIX')
-        print(prev_value_matrix.shape)
-        self.value_matrix = self.sess.run(self.env.stepped_value_matrix, feed_dict={self.env.q: action, self.env.value_matrix: prev_value_matrix})
-        print('AFTER VALUE MATRIX')
-        print(self.value_matrix.shape)
+        #print('PREV VALUE MATRIX')
+        #print(prev_value_matrix.shape)
+        self.value_matrix, qa = self.sess.run([self.env.stepped_value_matrix, self.env.qa], feed_dict={self.env.q: action, self.env.a: answer, self.env.value_matrix: prev_value_matrix})
+        #self.value_matrix = self.sess.run(self.env.stepped_value_matrix, feed_dict={self.env.q: action, self.env.a: -1, self.env.value_matrix: prev_value_matrix})
+        #print('AFTER VALUE MATRIX')
+        #print(self.value_matrix.shape)
         self.reward = np.sum(self.value_matrix) - np.sum(prev_value_matrix)
 
         # Need to feed value to self.env.qa_data_seq
@@ -95,7 +100,7 @@ class DKVMNEnvironment(Environment):
         self.episode_step += 1
 
         #print('QA %d %f' % (qa, np.sum(self.next_state)))
-        print('Reward %f' % self.reward)
+        print('QA : %3d, Reward : %f' % (qa, self.reward))
         if self.episode_step == self.args.episode_maxstep:
             terminal = True
         else:
