@@ -14,9 +14,8 @@ class Model():
         self.sess = sess
 
         self.create_model()
-        self.stepped_value_matrix = self.create_step()
-        #self.stepped_value_matrix_given_q = self.create_step_given_q()
-        #self.stepped_value_matrix_given_qa = self.create_step_given_qa()
+        self.create_step()
+        #self.stepped_value_matrix = self.create_step()
 
     def get_value_memory_shape(self):
         return [self.args.memory_size, self.args.memory_value_state_dim]
@@ -33,22 +32,14 @@ class Model():
     
 
     def sampling_a_given_q(self, q, value_matrix):
-        print('Sampling A given Q')
-
         q_embed = self.embedding_q(q)
-        #q_embed = tf.squeeze(q_embed)
         correlation_weight = self.get_correlation_weight(q_embed)
+
         pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, value_matrix, reuse_flag = True))
         threshold = tf.random_uniform(pred_prob.shape)
+
         a = tf.cast(tf.less(threshold, pred_prob), tf.int32)
         qa = q + tf.multiply(a, self.args.n_questions)[0]
-        #tf.Print(a, [a], message='Sampling A given Q: ')
-
-        # state
-        #self.updated_value_memory = self.update_value_memory(qa, correlation_weight, reuse_flag = True)
-   
-        # reward 
-        #self.value_memory_difference = tf.reduce_sum(self.updated_value_memory - value_memory)
 
         return qa 
 
@@ -57,16 +48,10 @@ class Model():
         return self.memory.attention(q)
         
     def update_value_memory(self, qa, correlation_weight, value_matrix, reuse_flag):
-        #print('This is update_value_memory')
-        #self.updated_memory = self.memory.write(correlation_weight, qa, reuse=reuse_flag)
-        #self.updated_memory = self.memory.value.write(value_matrix, correlation_weight, qa, reuse_flag)
-        #return self.memory.write(correlation_weight, qa, reuse=reuse_flag)
-        #return self.updated_memory
         return self.memory.value.write(value_matrix, correlation_weight, qa, reuse_flag)
         
     # TODO : rename predict_hit_logits
     def predict_hit_probability(self, q, correlation_weight, reuse_flag):
-        #print('predict_hit_probability')
         read_content = self.memory.read(correlation_weight)
 
         mastery_level_prior_difficulty = tf.concat([read_content, q], 1)
@@ -79,8 +64,6 @@ class Model():
 
     # TODO : rename predict_hit_logits
     def predict_hit_probability(self, q, correlation_weight, value_matrix, reuse_flag):
-        #print('predict_hit_probability')
-        #read_content = self.memory.read(correlation_weight)
         read_content = self.memory.value.read(value_matrix, correlation_weight)
 
         mastery_level_prior_difficulty = tf.concat([read_content, q], 1)
@@ -94,16 +77,13 @@ class Model():
     def create_step(self):
         # q : action for RL
         # value_matrix : state for RL
-        #with tf.variable_scope('Step_given_qa'):
         self.q = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_q') 
         self.a = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_a') 
-        #self.a = tf.placeholder(tf.int32)
         self.value_matrix = tf.placeholder(tf.float32, [self.args.memory_size,self.args.memory_value_state_dim], name='step_value_matrix')
 
         slice_a = tf.split(self.a, self.args.seq_len, 1) 
         a = tf.squeeze(slice_a[0], 1)
  
-        # TODO : refactoring 
         slice_q = tf.split(self.q, self.args.seq_len, 1) 
         q = tf.squeeze(slice_q[0], 1)
         q_embed = self.embedding_q(q)
@@ -111,59 +91,15 @@ class Model():
 
         stacked_value_matrix = tf.tile(tf.expand_dims(self.value_matrix, 0), tf.stack([self.args.batch_size, 1, 1]))
          
+        # -1 for sampling
+        # 0, 1 for given answer
         self.qa = tf.cond(tf.squeeze(a) < 0, lambda: self.sampling_a_given_q(q, stacked_value_matrix), lambda: q + tf.multiply(a, self.args.n_questions))
         qa_embed = self.embedding_qa(self.qa) 
-        '''
-        if self.a < 0 : 
-            qa, qa_embed = self.sampling_a_given_q(q, stacked_value_matrix)
-            print('Sampling A')
-        else : 
-            qa = q + tf.multiply(self.a, self.args.n_questions)[0]
-            qa_embed = self.embedding_qa(qa) 
-            print('Given A')
-        '''
 
-        return tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
+        self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
+        #return tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
 
-    # Step function given q and a 
-    def create_step_given_qa(self):
-        # q : action for RL
-        # value_matrix : state for RL
-        #with tf.variable_scope('Step_given_qa'):
-        self.q_given_qa = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_q') 
-        self.a = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_a') 
-        self.value_matrix_given_qa = tf.placeholder(tf.float32, [self.args.memory_size,self.args.memory_value_state_dim], name='step_value_matrix')
-
-        # TODO : refactoring 
-        slice_q = tf.split(self.q_given_qa, self.args.seq_len, 1) 
-        q = tf.squeeze(slice_q[0], 1)
-        q_embed = self.embedding_q(q)
-        correlation_weight = self.get_correlation_weight(q_embed)
-
-        stacked_value_matrix = tf.tile(tf.expand_dims(self.value_matrix, 0), tf.stack([self.args.batch_size, 1, 1]))
-        qa = q + tf.multiply(self.a, self.args.n_questions)[0]
-        qa_embed = self.embedding_qa(qa) 
-
-        return tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
-
-
-    # Step function given q only 
-    def create_step_given_q(self):
-        # q : action for RL
-        # value_matrix : state for RL
-        #with tf.variable_scope('Step_given_q'):
-        self.q = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_q') 
-        self.value_matrix = tf.placeholder(tf.float32, [self.args.memory_size,self.args.memory_value_state_dim], name='step_value_matrix')
-
-        slice_q = tf.split(self.q, self.args.seq_len, 1) 
-        q = tf.squeeze(slice_q[0], 1)
-        q_embed = self.embedding_q(q)
-        correlation_weight = self.get_correlation_weight(q_embed)
-
-        stacked_value_matrix = tf.tile(tf.expand_dims(self.value_matrix, 0), tf.stack([self.args.batch_size, 1, 1]))
-        qa, qa_embed = self.sampling_a_given_q(q, stacked_value_matrix)
-
-        return tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
+        self.stepped_pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True))
         
     # TODO : rename init_memory?
     def create_memory(self):
@@ -201,22 +137,13 @@ class Model():
     def create_model(self):
         # 'seq_len' means question sequences
         self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
-        #print(tf.shape(self.q_data_seq))
         self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
         self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
 
-        '''
-        self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
-        self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
-        self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
-        '''
-        self.pretrain = tf.placeholder_with_default(tf.constant(True), [])
-          
         self.memory = self.create_memory()
         self.init_embedding_mtx()
             
         slice_q_data = tf.split(self.q_data_seq, self.args.seq_len, 1) 
-        #print(tf.shape(slice_q_data))
         slice_qa_data = tf.split(self.qa_data_seq, self.args.seq_len, 1) 
 
         
@@ -232,7 +159,7 @@ class Model():
                 reuse_flag = True
 
             q = tf.squeeze(slice_q_data[i], 1)
-            print(tf.shape(q))
+            #print(tf.shape(q))
             qa = tf.squeeze(slice_qa_data[i], 1)
 
             q_embed = self.embedding_q(q)
@@ -242,15 +169,8 @@ class Model():
                 
             prediction.append(self.predict_hit_probability(q_embed, correlation_weight, self.memory.memory_value, reuse_flag))
 
-            # pretrain = True when DQN is playing
-            #qa_embed = tf.cond(self.pretrain, lambda:qa_embed, lambda: self.update_value_memory_with_sampling_a_given_q(q))
-
             self.memory.memory_value = self.update_value_memory(qa_embed, correlation_weight, self.memory.memory_value, reuse_flag)
 
-        
-        # state
-        #self.updated_value_memory = self.update_value_memory(qa, correlation_weight, reuse_flag = True)
-   
         # reward 
         self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - self.prev_value_memory)
         self.next_state = self.memory.memory_value        
@@ -420,24 +340,23 @@ class Model():
         else:
             raise Exception('CKPT need')
 
-        #print(self.updated_memory.shape)
-        #for i in range(10):
         log_file = open('batch_seqlen.log', 'w')
+        value_matrix = self.sess.run(self.init_memory_value)
+        for i in range(100):
 
-        for q in range(self.args.n_questions):
-            q = np.expand_dims(np.expand_dims(q, axis=0), axis=0) 
-            qa = q + self.args.n_questions
-    
-            #q_embed = self.embedding_q(q)
-            #qa_embed = self.embedding_qa(qa)
-
-            #correlation_weight = self.get_correlation_weight(q_embed)
-            #self.update_value_memory(qa_embed, correlation_weight, True)
-
-            val_memory, pred = self.sess.run([self.updated_memory, self.pred], feed_dict={self.q_data_seq : q, self.qa_data_seq : qa})
-            log_file.write(str(np.sum(val_memory))+'\n')
-            print(q, qa, np.sum(val_memory), pred)
+            for q in range(1, self.args.n_questions+1):
+                q = np.expand_dims(np.expand_dims(q, axis=0), axis=0) 
+                a = np.expand_dims(np.expand_dims(1, axis=0), axis=0) 
         
+                #q_embed = self.embedding_q(q)
+                #qa_embed = self.embedding_qa(qa)
+
+                #correlation_weight = self.get_correlation_weight(q_embed)
+                #self.update_value_memory(qa_embed, correlation_weight, True)
+
+                value_matrix, pred_prob, qa = np.squeeze(self.sess.run([self.stepped_value_matrix,self.stepped_pred_prob, self.qa], feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
+                log_file.write(str(np.sum(value_matrix))+' '+str(pred_prob)+'\n')
+                print(i, q, a, qa, np.sum(value_matrix), pred_prob)
         
         log_file.flush()    
         

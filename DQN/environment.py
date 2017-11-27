@@ -59,7 +59,7 @@ class DKVMNEnvironment(Environment):
         # -1 for sampling 
         # 0, 1 for input given
         # 0 : worst, 1 : best 
-        answer = np.asarray(0, dtype=np.int32)
+        answer = np.asarray(-1, dtype=np.int32)
         answer = np.expand_dims(np.expand_dims(answer, axis=0), axis=0)
 
         prev_value_matrix = self.value_matrix
