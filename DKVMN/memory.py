@@ -62,14 +62,14 @@ class DKVMN_Memory():
         '''
         erase_vector = operations.linear(qa_embedded, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
         # [batch size, memory state dim(d_v)]
-        erase_signal = tf.sigmoid(erase_vector)
+        self.erase_signal = tf.sigmoid(erase_vector)
         add_vector = operations.linear(qa_embedded, self.memory_state_dim, name=self.name+'/Add_Vector', reuse=reuse)
         # [batch size, memory state dim(d_v)]
         add_signal = tf.tanh(add_vector)
 
         # Add vector after erase
         # [batch size, 1, memory state dim(d_v)]
-        erase_reshaped = tf.reshape(erase_signal, [-1,1,self.memory_state_dim])
+        erase_reshaped = tf.reshape(self.erase_signal, [-1,1,self.memory_state_dim])
         # [batch size, memory size, 1]
         cw_reshaped = tf.reshape(correlation_weight, [-1,self.memory_size,1])
         # w_t(i) * e_t

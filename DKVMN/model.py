@@ -356,7 +356,7 @@ class Model():
 
                 value_matrix, pred_prob, qa = np.squeeze(self.sess.run([self.stepped_value_matrix,self.stepped_pred_prob, self.qa], feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
                 log_file.write(str(np.sum(value_matrix))+' '+str(pred_prob)+'\n')
-                print(i, q, a, qa, np.sum(value_matrix), pred_prob)
+                print(i, q, a, qa, np.sum(value_matrix), pred_prob, self.memory.value.erase_signal.eval(feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
         
         log_file.flush()    
         
