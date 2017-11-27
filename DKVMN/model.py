@@ -14,7 +14,7 @@ class Model():
         self.sess = sess
 
         self.create_model()
-        self.create_step()
+        #self.create_step()
         #self.stepped_value_matrix = self.create_step()
 
     def get_value_memory_shape(self):
@@ -410,7 +410,7 @@ class Model():
 
     @property
     def model_dir(self):
-        return '{}_{}batch_{}epochs'.format(self.args.dataset, self.args.batch_size, self.args.num_epochs)
+        return '{}_{}_{}batch_{}epochs'.format(self.args.prefix, self.args.dataset, self.args.batch_size, self.args.num_epochs)
 
     def load(self):
         self.args.batch_size = 32

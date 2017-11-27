@@ -54,6 +54,7 @@ def setHyperParamsForDataset(args):
 def main():
     try:
         parser = argparse.ArgumentParser()
+        parser.add_argument('--prefix', type=str, default='')
 
         ########## Control flag ##########
         parser.add_argument('--dkvmn_train', type=str2bool, default='f')
@@ -161,7 +162,7 @@ def main():
                 dkvmn.test(test_q_data, test_qa_data)
     
             if myArgs.dkvmn_ideal_test:
-                #dkvmn.create_step()
+                dkvmn.create_step()
                 dkvmn.ideal_test()
             
             ##### DQN #####
@@ -173,12 +174,12 @@ def main():
                 myAgent = DKVMNAgent(myArgs, sess, dkvmn)
 
             if myArgs.dqn_train:
-                #dkvmn.create_step()
+                dkvmn.create_step()
                 if os.path.exists('./train.csv'):
                     os.system("rm train.csv")
                 myAgent.train()
             if myArgs.dqn_test:
-                #dkvmn.create_step()
+                dkvmn.create_step()
                 myAgent.play()
     
     except KeyboardInterrupt:
