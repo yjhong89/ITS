@@ -48,7 +48,7 @@ class Model():
         return self.memory.attention(q)
         
     def update_value_memory(self, qa, correlation_weight, value_matrix, reuse_flag):
-        return self.memory.value.write(value_matrix, correlation_weight, qa, reuse_flag)
+        return self.memory.value.write_given_value_matrix(value_matrix, correlation_weight, qa, reuse_flag)
         
     # TODO : rename predict_hit_logits
     def predict_hit_probability(self, q, correlation_weight, reuse_flag):
@@ -96,11 +96,14 @@ class Model():
         self.qa = tf.cond(tf.squeeze(a) < 0, lambda: self.sampling_a_given_q(q, stacked_value_matrix), lambda: q + tf.multiply(a, self.args.n_questions))
         qa_embed = self.embedding_qa(self.qa) 
 
-        self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
+        self.stepped_value_matrix = tf.squeeze(self.memory.value.write_given_value_matrix(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
         #return tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
 
         self.stepped_pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True))
         
+    #def attentioned_difference
+        #self.memory.value.read(value,matrix, correlation_weight)
+
     # TODO : rename init_memory?
     def create_memory(self):
         with tf.variable_scope('Memory'):
@@ -333,30 +336,39 @@ class Model():
 
         return best_epoch    
     
-    def ideal_test(self): 
+    def ideal_test(self, input_type): 
         
         if self.load():
             print('CKPT Loaded')
         else:
             raise Exception('CKPT need')
 
-        log_file = open('batch_seqlen.log', 'w')
+        log_file_name = self.model_dir
+        if input_type == 0:
+            log_file_name = log_file_name + '_neg.log'
+        elif input_type == 1:
+            log_file_name = log_file_name + '_pos.log' 
+        elif input_type == -1:
+            log_file_name = log_file_name + '_rand.log' 
+
+        log_file = open(log_file_name, 'w')
         value_matrix = self.sess.run(self.init_memory_value)
         for i in range(100):
 
             for q in range(1, self.args.n_questions+1):
                 q = np.expand_dims(np.expand_dims(q, axis=0), axis=0) 
-                a = np.expand_dims(np.expand_dims(1, axis=0), axis=0) 
+                a = np.expand_dims(np.expand_dims(input_type, axis=0), axis=0) 
         
                 #q_embed = self.embedding_q(q)
                 #qa_embed = self.embedding_qa(qa)
 
                 #correlation_weight = self.get_correlation_weight(q_embed)
                 #self.update_value_memory(qa_embed, correlation_weight, True)
-
+                
+                
                 value_matrix, pred_prob, qa = np.squeeze(self.sess.run([self.stepped_value_matrix,self.stepped_pred_prob, self.qa], feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
-                log_file.write(str(np.sum(value_matrix))+' '+str(pred_prob)+'\n')
-                print(i, q, a, qa, np.sum(value_matrix), pred_prob, self.memory.value.erase_signal.eval(feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
+                log_file.write(str(i)+' '+str(q)+' '+str(a)+' '+str(np.sum(value_matrix))+' '+str(pred_prob)+'\n')
+                #print(i, q, a, qa, np.sum(value_matrix), pred_prob, self.memory.value.erase_signal.eval(feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
         
         log_file.flush()    
         
@@ -410,7 +422,7 @@ class Model():
 
     @property
     def model_dir(self):
-        return '{}_{}_{}batch_{}epochs'.format(self.args.prefix, self.args.dataset, self.args.batch_size, self.args.num_epochs)
+        return '{}{}_{}batch_{}epochs'.format(self.args.prefix, self.args.dataset, self.args.batch_size, self.args.num_epochs)
 
     def load(self):
         self.args.batch_size = 32

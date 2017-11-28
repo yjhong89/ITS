@@ -62,7 +62,9 @@ def main():
         parser.add_argument('--dqn_train', type=str2bool, default='f')
         parser.add_argument('--dqn_test', type=str2bool, default='f')
 
+        ########## Ideal test for DKVMN
         parser.add_argument('--dkvmn_ideal_test', type=str2bool, default='f')
+        parser.add_argument('--dkvmn_ideal_test_input_type', type=int, choices=[-1,0,1], default='1')
         
         ########## DKVMN ##########
         parser.add_argument('--dataset', type=str, choices=['synthetic', 'assist2009_updated','assist2015','STATICS'], default='assist2009_updated')
@@ -163,7 +165,7 @@ def main():
     
             if myArgs.dkvmn_ideal_test:
                 dkvmn.create_step()
-                dkvmn.ideal_test()
+                dkvmn.ideal_test(myArgs.dkvmn_ideal_test_input_type)
             
             ##### DQN #####
             if myArgs.env_name == 'CartPole-v0':
