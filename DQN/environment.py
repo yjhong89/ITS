@@ -78,5 +78,5 @@ class DKVMNEnvironment(Environment):
         return np.squeeze(self.value_matrix), self.reward, terminal
 
     def random_action(self):
-        return random.randrange(1, self.num_actions+1)
+        return random.randrange(2, self.num_actions+1)
         

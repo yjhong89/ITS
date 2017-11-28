@@ -35,7 +35,9 @@ class Model():
         q_embed = self.embedding_q(q)
         correlation_weight = self.get_correlation_weight(q_embed)
 
-        pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, value_matrix, reuse_flag = True))
+        _, _, pred_logit = self.predict_hit_probability(q_embed, correlation_weight, value_matrix, reuse_flag = True)
+        pred_prob = tf.nn.sigmoid(pred_logit)
+        #pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, value_matrix, reuse_flag = True))
         threshold = tf.random_uniform(pred_prob.shape)
 
         a = tf.cast(tf.less(threshold, pred_prob), tf.int32)
@@ -51,6 +53,7 @@ class Model():
         #return self.memory.value.write_given_value_matrix(value_matrix, correlation_weight, qa, reuse_flag)
         return self.memory.value.write(value_matrix, correlation_weight, qa, reuse_flag)
         
+    '''
     # TODO : rename predict_hit_logits
     def predict_hit_probability(self, q, correlation_weight, reuse_flag):
         read_content = self.memory.read(correlation_weight)
@@ -62,6 +65,7 @@ class Model():
         pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
 
         return pred_logits
+    '''
 
     # TODO : rename predict_hit_logits
     def predict_hit_probability(self, q, correlation_weight, value_matrix, reuse_flag):
@@ -73,7 +77,7 @@ class Model():
         # p_t
         pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
 
-        return pred_logits
+        return read_content, summary_vector, pred_logits
  
     def create_step(self):
         # q : action for RL
@@ -97,10 +101,25 @@ class Model():
         self.qa = tf.cond(tf.squeeze(a) < 0, lambda: self.sampling_a_given_q(q, stacked_value_matrix), lambda: q + tf.multiply(a, self.args.n_questions))
         qa_embed = self.embedding_qa(self.qa) 
 
+        ######### Before Step ##########
+        prev_read_content, prev_summary, prev_pred_logits = self.predict_hit_probability(q_embed, correlation_weight, stacked_value_matrix, reuse_flag = True)
+        prev_pred_prob = tf.nn.sigmoid(prev_pred_logits)
+        #prev_pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, stacked_value_matrix, reuse_flag = True))
+
+        ######### STEP #####################
         self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
+        self.stepped_read_content, self.stepped_summary, self.stepped_pred_logits = self.predict_hit_probability(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True)
+        self.stepped_pred_prob = tf.nn.sigmoid(self.stepped_pred_logits)
+        #self.stepped_pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True))
         #self.stepped_value_matrix = tf.squeeze(self.memory.value.write_given_value_matrix(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
 
-        self.stepped_pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True))
+        ######### After Step #########
+        self.value_matrix_difference = tf.squeeze(tf.reduce_sum(self.stepped_value_matrix - stacked_value_matrix))
+        self.read_content_difference = tf.squeeze(tf.reduce_sum(self.stepped_read_content - prev_read_content))
+        self.summary_difference = tf.squeeze(tf.reduce_sum(self.stepped_summary - prev_summary))
+        self.pred_logit_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_logits - prev_pred_logits))
+        self.pred_prob_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_prob - prev_pred_prob))
+
         
     #def attentioned_difference
         #self.memory.value.read(value,matrix, correlation_weight)
@@ -171,7 +190,10 @@ class Model():
 
             correlation_weight = self.get_correlation_weight(q_embed)
                 
-            prediction.append(self.predict_hit_probability(q_embed, correlation_weight, self.memory.memory_value, reuse_flag))
+                
+            _, _, pred_logit = self.predict_hit_probability(q_embed, correlation_weight, self.memory.memory_value, reuse_flag)
+            prediction.append(pred_logit)
+            #prediction.append(self.predict_hit_probability(q_embed, correlation_weight, self.memory.memory_value, reuse_flag))
 
             self.memory.memory_value = self.update_value_memory(qa_embed, correlation_weight, self.memory.memory_value, reuse_flag)
 
@@ -346,18 +368,18 @@ class Model():
 
         log_file_name = 'logs/'+self.model_dir
         if input_type == 0:
-            log_file_name = log_file_name + '_neg.log'
+            log_file_name = log_file_name + '_neg.csv'
         elif input_type == 1:
-            log_file_name = log_file_name + '_pos.log' 
+            log_file_name = log_file_name + '_pos.csv' 
         elif input_type == -1:
-            log_file_name = log_file_name + '_rand.log' 
+            log_file_name = log_file_name + '_rand.csv' 
 
         log_file = open(log_file_name, 'w')
         value_matrix = self.sess.run(self.init_memory_value)
         for i in range(100):
 
-            for q in range(1, self.args.n_questions+1):
-                q = np.expand_dims(np.expand_dims(q, axis=0), axis=0) 
+            for q_idx in range(1, self.args.n_questions+1):
+                q = np.expand_dims(np.expand_dims(q_idx, axis=0), axis=0) 
                 a = np.expand_dims(np.expand_dims(input_type, axis=0), axis=0) 
         
                 #q_embed = self.embedding_q(q)
@@ -366,9 +388,18 @@ class Model():
                 #correlation_weight = self.get_correlation_weight(q_embed)
                 #self.update_value_memory(qa_embed, correlation_weight, True)
                 
-                
-                value_matrix, pred_prob, qa = np.squeeze(self.sess.run([self.stepped_value_matrix,self.stepped_pred_prob, self.qa], feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
-                log_file.write(str(i)+' '+ str(np.squeeze(np.squeeze(q))) +' '+str(np.squeeze(np.squeeze(a)))+' '+str(np.sum(value_matrix))+' '+str(np.squeeze(np.squeeze(pred_prob)))+'\n')
+                ops = [self.stepped_value_matrix, self.stepped_pred_prob, self.value_matrix_difference, self.read_content_difference, self.summary_difference, self.pred_logit_difference, self.pred_prob_difference]
+                feed_dict = { self.q : q, self.a : a, self.value_matrix: value_matrix }
+
+                value_matrix, pred_prob, value_matrix_diff, read_content_diff, summary_diff, pred_logit_diff, pred_prob_diff = np.squeeze(self.sess.run(ops, feed_dict=feed_dict))
+                pred_prob = np.squeeze(np.squeeze(pred_prob))
+
+                log = str(i)+' '+ str(q_idx) +' '+str(input_type)+' '+str(np.sum(value_matrix))+' '+str(pred_prob) + ' '
+                log = log + str(value_matrix_diff) + ' '  + str(read_content_diff) + ' ' + str(summary_diff) + ' ' + str(pred_logit_diff) + ' ' + str(pred_prob_diff) + '\n'  
+                log_file.write(log) 
+
+                #log_file.write('{:>3},{:>3},{},{:>5},{:>5},{:>5},{:>5},{:>5}.{:>5},{:>5}\n'.format(i, q_idx, input_type, str(np.sum(value_matrix)), pred_prob, str(value_matrix_diff), str(read_content_diff), str(summary_diff), str(pred_logit_diff), str(pred_prob_diff)))
+                #log_file.write(str(i)+' '+ str(q_idx) +' '+str(input_type)+' '+str(np.sum(value_matrix))+' '+value_matrix_difference+' '+str(np.squeeze(np.squeeze(pred_prob)))+'\n')
                 #print(i, q, a, qa, np.sum(value_matrix), pred_prob, self.memory.value.erase_signal.eval(feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
         
         log_file.flush()    

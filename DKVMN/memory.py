@@ -74,12 +74,11 @@ class DKVMN_Memory():
         elif self.args.erase_signal_activation == 'sigmoid':
             return tf.sigmoid(erase_vector)
 
+    '''
     def write_given_value_matrix(self, value_matrix, correlation_weight, qa_embedded, reuse=False):
-        '''
-            Value matrix : [batch size, memory size, memory state dim(d_k)]
-            Correlation weight : [batch size, memory size]
-            qa_embedded : (q, r) pair embedded, [batch size, memory state dim(d_v)]
-        '''
+            #Value matrix : [batch size, memory size, memory state dim(d_k)]
+            #Correlation weight : [batch size, memory size]
+            #qa_embedded : (q, r) pair embedded, [batch size, memory state dim(d_v)]
         #print(tf.shape(value_matrix))
         value_matrix_reshaped = tf.reshape(value_matrix, [-1, self.memory_size*self.memory_state_dim])
         #print(tf.shape(value_matrix_reshaped))
@@ -115,6 +114,7 @@ class DKVMN_Memory():
         # [batch size, memory size, memory value staet dim]
         #print('Memory shape : %s' % (new_memory.get_shape()))
         return new_memory
+    '''
 
     def write(self, value_matrix, correlation_weight, qa_embedded, reuse=False):
         '''
