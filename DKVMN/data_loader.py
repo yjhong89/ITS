@@ -28,12 +28,12 @@ class DATA_LOADER():
 			# Exercise tag line
 			if lineid % 3 == 1:
 				# split by ',', returns tag list
-				print('Excercies tag')
+				#print('Excercies tag')
 				q_tag_list = line.split(self.seperate_char)
 			
 			# Answer
 			elif lineid % 3 == 2:
-				print(', Answers')
+				#print(', Answers')
 				answer_list = line.split(self.seperate_char)
 			
 				# Divide case by seq_len
@@ -43,7 +43,7 @@ class DATA_LOADER():
 						n_split += 1
 				else:
 					n_split = 1
-				print('Number of split : %d' % n_split)
+				#print('Number of split : %d' % n_split)
 	
 				# Contain as many as seq_len, then contain remainder
 				for k in range(n_split):
