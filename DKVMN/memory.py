@@ -54,13 +54,6 @@ class DKVMN_Memory():
         #print('Read content shape : %s' % (read_content.get_shape()))
         return read_content
 
-    def calculate_knowledge_growth(self, value_matrix, correlation_weight, qa_embedded, resue=False):
-        if self.args.knowledge_growth == 'origin': 
-             return qa_embedded
-        
-        elif self.args.knowledge_growth == 'value_matrix':
-             value_matrix_reshaped = tf.reshape(value_matrix, [-1, self.memory_size*self.memory_state_dim])
-             return tf.concat([value_matrix_reshaped, qa_embedded], 1)
 
     def activate_add_signal(self, add_vector):
         if self.args.add_signal_activation == 'tanh':
@@ -74,28 +67,20 @@ class DKVMN_Memory():
         elif self.args.erase_signal_activation == 'sigmoid':
             return tf.sigmoid(erase_vector)
 
-    '''
-    def write_given_value_matrix(self, value_matrix, correlation_weight, qa_embedded, reuse=False):
-            #Value matrix : [batch size, memory size, memory state dim(d_k)]
-            #Correlation weight : [batch size, memory size]
-            #qa_embedded : (q, r) pair embedded, [batch size, memory state dim(d_v)]
-        #print(tf.shape(value_matrix))
-        value_matrix_reshaped = tf.reshape(value_matrix, [-1, self.memory_size*self.memory_state_dim])
-        #print(tf.shape(value_matrix_reshaped))
-        #merged = tf.stack([value_matrix_reshaped, qa_embedded], axis=1)
-        merged = tf.concat([value_matrix_reshaped, qa_embedded], 1)
-        #print(tf.shape(qa_embedded))
-        #print(tf.shape(merged))
-
-        #erase_vector = operations.linear(qa_embedded, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
-        erase_vector = operations.linear(merged, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
+    def write(self, value_matrix, correlation_weight, qa_embedded, knowledge_growth, reuse=False):
+        '''
+            Value matrix : [batch size, memory size, memory state dim(d_k)]
+            Correlation weight : [batch size, memory size]
+            qa_embedded : (q, r) pair embedded, [batch size, memory state dim(d_v)]
+        '''
+        #knowledge_growth = self.calculate_knowledge_growth(value_matrix, correlation_weight, qa_embedded, reuse)
+        erase_vector = operations.linear(knowledge_growth, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
         # [batch size, memory state dim(d_v)]
-        self.erase_signal = tf.sigmoid(erase_vector)
-        #add_vector = operations.linear(qa_embedded, self.memory_state_dim, name=self.name+'/Add_Vector', reuse=reuse)
-        add_vector = operations.linear(merged, self.memory_state_dim, name=self.name+'/Add_Vector', reuse=reuse)
+        #self.erase_signal = tf.sigmoid(erase_vector)
+        self.erase_signal = self.activate_erase_signal(erase_vector)
+        add_vector = operations.linear(knowledge_growth, self.memory_state_dim, name=self.name+'/Add_Vector', reuse=reuse)
         # [batch size, memory state dim(d_v)]
-        add_signal = tf.sigmoid(add_vector)
-        #add_signal = tf.tanh(add_vector)
+        add_signal = self.activate_add_signal(add_vector)
 
         # Add vector after erase
         # [batch size, 1, memory state dim(d_v)]
@@ -114,14 +99,12 @@ class DKVMN_Memory():
         # [batch size, memory size, memory value staet dim]
         #print('Memory shape : %s' % (new_memory.get_shape()))
         return new_memory
-    '''
 
+    '''
     def write(self, value_matrix, correlation_weight, qa_embedded, reuse=False):
-        '''
-            Value matrix : [batch size, memory size, memory state dim(d_k)]
-            Correlation weight : [batch size, memory size]
-            qa_embedded : (q, r) pair embedded, [batch size, memory state dim(d_v)]
-        '''
+            #Value matrix : [batch size, memory size, memory state dim(d_k)]
+            #Correlation weight : [batch size, memory size]
+            #qa_embedded : (q, r) pair embedded, [batch size, memory state dim(d_v)]
         knowledge_growth = self.calculate_knowledge_growth(value_matrix, correlation_weight, qa_embedded, reuse)
         erase_vector = operations.linear(knowledge_growth, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
         # [batch size, memory state dim(d_v)]
@@ -148,6 +131,7 @@ class DKVMN_Memory():
         # [batch size, memory size, memory value staet dim]
         #print('Memory shape : %s' % (new_memory.get_shape()))
         return new_memory
+    '''
 
 
 # This class construct key matrix and value matrix

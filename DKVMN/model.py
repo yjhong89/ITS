@@ -49,9 +49,9 @@ class Model():
     def get_correlation_weight(self, q):
         return self.memory.attention(q)
         
-    def update_value_memory(self, qa, correlation_weight, value_matrix, reuse_flag):
+    def update_value_memory(self, qa, correlation_weight, value_matrix, knowledge_growth, reuse_flag):
         #return self.memory.value.write_given_value_matrix(value_matrix, correlation_weight, qa, reuse_flag)
-        return self.memory.value.write(value_matrix, correlation_weight, qa, reuse_flag)
+        return self.memory.value.write(value_matrix, correlation_weight, qa, knowledge_growth, reuse_flag)
         
     '''
     # TODO : rename predict_hit_logits
@@ -78,7 +78,28 @@ class Model():
         pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
 
         return read_content, summary_vector, pred_logits
+
+
+    def calculate_knowledge_growth(self, value_matrix, correlation_weight, qa_embedded, read_content, summary, pred_prob, resue=False):
+        if self.args.knowledge_growth == 'origin': 
+             return qa_embedded
+        
+        elif self.args.knowledge_growth == 'value_matrix':
+             value_matrix_reshaped = tf.reshape(value_matrix, [self.args.batch_size, -1])
+             return tf.concat([value_matrix_reshaped, qa_embedded], 1)
+
+        elif self.args.knowledge_growth == 'read_content':
+             read_content_reshaped = tf.reshape(read_content, [self.args.batch_size, -1])
+             return tf.concat([read_content_reshaped, qa_embedded], 1)
+
+        elif self.args.knowledge_growth == 'summary':
+             summary_reshaped = tf.reshape(summary, [self.args.batch_size, -1])
+             return tf.concat([summary_reshaped, qa_embedded], 1)
  
+        elif self.args.knowledge_growth == 'pred_prob':
+             pred_prob_reshaped = tf.reshape(pred_prob, [self.args.batch_size, -1])
+             return tf.concat([pred_prob_reshaped, qa_embedded], 1)
+
     def create_step(self):
         # q : action for RL
         # value_matrix : state for RL
@@ -107,7 +128,8 @@ class Model():
         #prev_pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, stacked_value_matrix, reuse_flag = True))
 
         ######### STEP #####################
-        self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
+        knowledge_growth = self.calculate_knowledge_growth(stacked_value_matrix, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob, resue=False)
+        self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, knowledge_growth, True), axis=0)
         self.stepped_read_content, self.stepped_summary, self.stepped_pred_logits = self.predict_hit_probability(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True)
         self.stepped_pred_prob = tf.nn.sigmoid(self.stepped_pred_logits)
         #self.stepped_pred_prob = tf.nn.sigmoid(self.predict_hit_probability(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True))
@@ -191,11 +213,13 @@ class Model():
             correlation_weight = self.get_correlation_weight(q_embed)
                 
                 
-            _, _, pred_logit = self.predict_hit_probability(q_embed, correlation_weight, self.memory.memory_value, reuse_flag)
-            prediction.append(pred_logit)
+            prev_read_content, prev_summary, prev_pred_logit = self.predict_hit_probability(q_embed, correlation_weight, self.memory.memory_value, reuse_flag)
+            prediction.append(prev_pred_logit)
+            prev_pred_prob = tf.sigmoid(prev_pred_logit)
             #prediction.append(self.predict_hit_probability(q_embed, correlation_weight, self.memory.memory_value, reuse_flag))
 
-            self.memory.memory_value = self.update_value_memory(qa_embed, correlation_weight, self.memory.memory_value, reuse_flag)
+            knowledge_growth = self.calculate_knowledge_growth(self.memory.memory_value, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob, resue=False)
+            self.memory.memory_value = self.update_value_memory(qa_embed, correlation_weight, self.memory.memory_value, knowledge_growth, reuse_flag)
 
         # reward 
         self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - self.prev_value_memory)

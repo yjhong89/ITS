@@ -82,7 +82,7 @@ def main():
         parser.add_argument('--data_dir', type=str, default='DKVMN/data')
 
         ########## Modified DKVMN ##########
-        parser.add_argument('--knowledge_growth', type=str, choices=['origin', 'value_matrix', 'read_content', 'summary'], default='value_matrix')
+        parser.add_argument('--knowledge_growth', type=str, choices=['origin', 'value_matrix', 'read_content', 'summary', 'pred_prob'], default='value_matrix')
         parser.add_argument('--add_signal_activation', type=str, choices=['tanh', 'sigmoid'], default='sigmoid')
         parser.add_argument('--erase_signal_activation', type=str, choices=['tanh', 'sigmoid'], default='sigmoid')
        
