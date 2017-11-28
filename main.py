@@ -54,7 +54,7 @@ def setHyperParamsForDataset(args):
 def main():
     try:
         parser = argparse.ArgumentParser()
-        parser.add_argument('--prefix', type=str, default='')
+        #parser.add_argument('--prefix', type=str, default='')
 
         ########## Control flag ##########
         parser.add_argument('--dkvmn_train', type=str2bool, default='f')
@@ -81,7 +81,11 @@ def main():
         parser.add_argument('--dkvmn_log_dir', type=str, default='DKVMN/log')
         parser.add_argument('--data_dir', type=str, default='DKVMN/data')
 
-
+        ########## Modified DKVMN ##########
+        parser.add_argument('--knowledge_growth', type=str, choices=['origin', 'value_matrix', 'read_content', 'summary'], default='value_matrix')
+        parser.add_argument('--add_signal_activation', type=str, choices=['tanh', 'sigmoid'], default='sigmoid')
+        parser.add_argument('--erase_signal_activation', type=str, choices=['tanh', 'sigmoid'], default='sigmoid')
+       
         ##### Default(STATICS) hyperparameter #####
         parser.add_argument('--batch_size', type=int, default=10)
         parser.add_argument('--memory_size', type=int, default=50)
