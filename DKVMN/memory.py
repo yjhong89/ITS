@@ -54,6 +54,48 @@ class DKVMN_Memory():
         return read_content
 
 
+    def write_given_value_matrix(self, value_matrix, correlation_weight, qa_embedded, reuse=False):
+        '''
+            Value matrix : [batch size, memory size, memory state dim(d_k)]
+            Correlation weight : [batch size, memory size]
+            qa_embedded : (q, r) pair embedded, [batch size, memory state dim(d_v)]
+        '''
+        #print(tf.shape(value_matrix))
+        value_matrix_reshaped = tf.reshape(value_matrix, [-1, self.memory_size*self.memory_state_dim])
+        #print(tf.shape(value_matrix_reshaped))
+        #merged = tf.stack([value_matrix_reshaped, qa_embedded], axis=1)
+        merged = tf.concat([value_matrix_reshaped, qa_embedded], 1)
+        #print(tf.shape(qa_embedded))
+        #print(tf.shape(merged))
+
+        #erase_vector = operations.linear(qa_embedded, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
+        erase_vector = operations.linear(merged, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
+        # [batch size, memory state dim(d_v)]
+        self.erase_signal = tf.sigmoid(erase_vector)
+        #add_vector = operations.linear(qa_embedded, self.memory_state_dim, name=self.name+'/Add_Vector', reuse=reuse)
+        add_vector = operations.linear(merged, self.memory_state_dim, name=self.name+'/Add_Vector', reuse=reuse)
+        # [batch size, memory state dim(d_v)]
+        add_signal = tf.sigmoid(add_vector)
+        #add_signal = tf.tanh(add_vector)
+
+        # Add vector after erase
+        # [batch size, 1, memory state dim(d_v)]
+        erase_reshaped = tf.reshape(self.erase_signal, [-1,1,self.memory_state_dim])
+        # [batch size, memory size, 1]
+        cw_reshaped = tf.reshape(correlation_weight, [-1,self.memory_size,1])
+        # w_t(i) * e_t
+        erase_mul = tf.multiply(erase_reshaped, cw_reshaped)
+        # Elementwise multiply between [batch size, memory size, memory state dim(d_v)]
+        erase = value_matrix * (1 - erase_mul)
+        # [batch size, 1, memory state dim(d_v)]
+        add_reshaped = tf.reshape(add_signal, [-1, 1, self.memory_state_dim])
+        add_mul = tf.multiply(add_reshaped, cw_reshaped)
+        
+        new_memory = erase + add_mul
+        # [batch size, memory size, memory value staet dim]
+        #print('Memory shape : %s' % (new_memory.get_shape()))
+        return new_memory
+
     def write(self, value_matrix, correlation_weight, qa_embedded, reuse=False):
         '''
             Value matrix : [batch size, memory size, memory state dim(d_k)]
@@ -110,7 +152,8 @@ class DKVMN():
         return read_content
 
     def write(self, c_weight, qa_embedded, reuse):
-        self.memory_value = self.value.write(value_matrix=self.memory_value, correlation_weight=c_weight, qa_embedded=qa_embedded, reuse=reuse)
+        self.memory_value = self.value.write_given_value_matrix(value_matrix=self.memory_value, correlation_weight=c_weight, qa_embedded=qa_embedded, reuse=reuse)
+        #self.memory_value = self.value.write(value_matrix=self.memory_value, correlation_weight=c_weight, qa_embedded=qa_embedded, reuse=reuse)
         return self.memory_value
 
 
