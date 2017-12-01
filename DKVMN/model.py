@@ -418,8 +418,8 @@ class Model():
                 value_matrix, pred_prob, value_matrix_diff, read_content_diff, summary_diff, pred_logit_diff, pred_prob_diff = np.squeeze(self.sess.run(ops, feed_dict=feed_dict))
                 pred_prob = np.squeeze(np.squeeze(pred_prob))
 
-                log = str(i)+' '+ str(q_idx) +' '+str(input_type)+' '+str(np.sum(value_matrix))+' '+str(pred_prob) + ' '
-                log = log + str(value_matrix_diff) + ' '  + str(read_content_diff) + ' ' + str(summary_diff) + ' ' + str(pred_logit_diff) + ' ' + str(pred_prob_diff) + '\n'  
+                log = str(i)+','+ str(q_idx) +','+str(input_type)+','+str(np.sum(value_matrix))+','+str(pred_prob) + ','
+                log = log + str(value_matrix_diff) + ','  + str(read_content_diff) + ',' + str(summary_diff) + ',' + str(pred_logit_diff) + ',' + str(pred_prob_diff) + '\n'  
                 log_file.write(log) 
 
                 #log_file.write('{:>3},{:>3},{},{:>5},{:>5},{:>5},{:>5},{:>5}.{:>5},{:>5}\n'.format(i, q_idx, input_type, str(np.sum(value_matrix)), pred_prob, str(value_matrix_diff), str(read_content_diff), str(summary_diff), str(pred_logit_diff), str(pred_prob_diff)))
