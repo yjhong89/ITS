@@ -463,10 +463,10 @@ class Model():
         all_pred = np.concatenate(pred_list, axis=0)
         all_target = np.concatenate(target_list, axis=0)
 
+        self.test_auc = metrics.roc_auc_score(all_target, all_pred)
         # Compute metrics
         all_pred[all_pred > 0.5] = 1
         all_pred[all_pred <= 0.5] = 0
-        self.test_auc = metrics.roc_auc_score(all_target, all_pred)
         # Extract elements with boolean index
         # Make '1' for elements higher than 0.5
         # Make '0' for elements lower than 0.5
