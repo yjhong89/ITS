@@ -17,7 +17,8 @@ class Model():
     
     def sampling_a_given_q(self, q, value_matrix):
         q_embed = self.embedding_q(q)
-        correlation_weight = self.get_correlation_weight(q_embed)
+        #correlation_weight = self.get_correlation_weight(q_embed)
+        correlation_weight = self.memory.attention(q_embed)
 
         _, _, pred_logit, pred_prob = self.inference(q_embed, correlation_weight, value_matrix, reuse_flag = True)
         threshold = tf.random_uniform(pred_prob.shape)
@@ -27,11 +28,8 @@ class Model():
 
         return qa 
 
-    def get_correlation_weight(self, q):
-        return self.memory.attention(q)
-        
-    def update_value_memory(self, qa, correlation_weight, value_matrix, knowledge_growth, reuse_flag):
-        return self.memory.value.write(value_matrix, correlation_weight, qa, knowledge_growth, reuse_flag)
+    #def get_correlation_weight(self, q_embed):
+        #return self.memory.attention(q_embed)
 
     def inference(self, q, correlation_weight, value_matrix, reuse_flag):
         read_content = self.memory.value.read(value_matrix, correlation_weight)
@@ -110,14 +108,15 @@ class Model():
             q_embed = self.embedding_q(q)
             qa_embed = self.embedding_qa(qa)
 
-            correlation_weight = self.get_correlation_weight(q_embed)
+            correlation_weight = self.memory.attention(q_embed)
+            #correlation_weight = self.get_correlation_weight(q_embed)
                 
                 
             prev_read_content, prev_summary, prev_pred_logit, prev_pred_prob = self.inference(q_embed, correlation_weight, self.memory.memory_value, reuse_flag)
             prediction.append(prev_pred_logit)
 
             knowledge_growth = self.calculate_knowledge_growth(self.memory.memory_value, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob, resue=False)
-            self.memory.memory_value = self.update_value_memory(qa_embed, correlation_weight, self.memory.memory_value, knowledge_growth, reuse_flag)
+            self.memory.memory_value = self.memory.value.write(self.memory.memory_value, correlation_weight, qa_embed, knowledge_growth, reuse_flag)
 
         # reward 
         self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - self.prev_value_memory)
@@ -362,14 +361,13 @@ class Model():
         slice_q = tf.split(self.q, self.args.seq_len, 1) 
         q = tf.squeeze(slice_q[0], 1)
         q_embed = self.embedding_q(q)
-        correlation_weight = self.get_correlation_weight(q_embed)
+        correlation_weight = self.memory.attention(q_embed)
+        #correlation_weight = self.get_correlation_weight(q_embed)
 
         stacked_value_matrix = tf.tile(tf.expand_dims(self.value_matrix, 0), tf.stack([self.args.batch_size, 1, 1]))
          
         # -1 for sampling
         # 0, 1 for given answer
-        print(self.args.batch_size)
-        print(self.args.seq_len)
         self.qa = tf.cond(tf.squeeze(a) < 0, lambda: self.sampling_a_given_q(q, stacked_value_matrix), lambda: q + tf.multiply(a, self.args.n_questions))
         qa_embed = self.embedding_qa(self.qa) 
 
@@ -410,12 +408,6 @@ class Model():
                 q = np.expand_dims(np.expand_dims(q_idx, axis=0), axis=0) 
                 a = np.expand_dims(np.expand_dims(input_type, axis=0), axis=0) 
         
-                #q_embed = self.embedding_q(q)
-                #qa_embed = self.embedding_qa(qa)
-
-                #correlation_weight = self.get_correlation_weight(q_embed)
-                #self.update_value_memory(qa_embed, correlation_weight, True)
-                
                 ops = [self.stepped_value_matrix, self.stepped_pred_prob, self.value_matrix_difference, self.read_content_difference, self.summary_difference, self.pred_logit_difference, self.pred_prob_difference]
                 feed_dict = { self.q : q, self.a : a, self.value_matrix: value_matrix }
 
@@ -426,10 +418,6 @@ class Model():
                 log = log + str(value_matrix_diff) + ','  + str(read_content_diff) + ',' + str(summary_diff) + ',' + str(pred_logit_diff) + ',' + str(pred_prob_diff) + '\n'  
                 log_file.write(log) 
 
-                #log_file.write('{:>3},{:>3},{},{:>5},{:>5},{:>5},{:>5},{:>5}.{:>5},{:>5}\n'.format(i, q_idx, input_type, str(np.sum(value_matrix)), pred_prob, str(value_matrix_diff), str(read_content_diff), str(summary_diff), str(pred_logit_diff), str(pred_prob_diff)))
-                #log_file.write(str(i)+' '+ str(q_idx) +' '+str(input_type)+' '+str(np.sum(value_matrix))+' '+value_matrix_difference+' '+str(np.squeeze(np.squeeze(pred_prob)))+'\n')
-                #print(i, q, a, qa, np.sum(value_matrix), pred_prob, self.memory.value.erase_signal.eval(feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
-        
         log_file.flush()    
 
     @property
