@@ -36,9 +36,9 @@ class DKVMNEnvironment(Environment):
         print('Initializing ENVIRONMENT')
         self.env = dkvmn 
 
-        self.env.print_info()
+        #self.env.print_info()
         #self.state_shape = self.env.get_value_memory_shape()
-        self.num_actions = self.env.get_n_questions()
+        self.num_actions = self.args.n_questions
         self.initial_ckpt = np.copy(self.env.memory.memory_value)
         self.episode_step = 0
 

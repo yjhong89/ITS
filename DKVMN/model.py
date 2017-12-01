@@ -13,20 +13,13 @@ class Model():
         self.name = name
         self.sess = sess
 
-        self.create_model()
-
-    def get_n_questions(self):
-        return self.args.n_questions
-
-    def print_info(self):
-        print('This is a Dynamic Key Value Memory Netowrk')
+        self.init_model()
     
     def sampling_a_given_q(self, q, value_matrix):
         q_embed = self.embedding_q(q)
         correlation_weight = self.get_correlation_weight(q_embed)
 
         _, _, pred_logit, pred_prob = self.inference(q_embed, correlation_weight, value_matrix, reuse_flag = True)
-        #pred_prob = tf.nn.sigmoid(pred_logit)
         threshold = tf.random_uniform(pred_prob.shape)
 
         a = tf.cast(tf.less(threshold, pred_prob), tf.int32)
@@ -34,15 +27,12 @@ class Model():
 
         return qa 
 
-
     def get_correlation_weight(self, q):
         return self.memory.attention(q)
         
     def update_value_memory(self, qa, correlation_weight, value_matrix, knowledge_growth, reuse_flag):
         return self.memory.value.write(value_matrix, correlation_weight, qa, knowledge_growth, reuse_flag)
-        
 
-    # TODO : rename predict_hit_logits
     def inference(self, q, correlation_weight, value_matrix, reuse_flag):
         read_content = self.memory.value.read(value_matrix, correlation_weight)
 
@@ -56,74 +46,8 @@ class Model():
 
         return read_content, summary_vector, pred_logits, pred_prob
 
-
-    def calculate_knowledge_growth(self, value_matrix, correlation_weight, qa_embedded, read_content, summary, pred_prob, resue=False):
-        if self.args.knowledge_growth == 'origin': 
-             return qa_embedded
         
-        elif self.args.knowledge_growth == 'value_matrix':
-             value_matrix_reshaped = tf.reshape(value_matrix, [self.args.batch_size, -1])
-             return tf.concat([value_matrix_reshaped, qa_embedded], 1)
-
-        elif self.args.knowledge_growth == 'read_content':
-             read_content_reshaped = tf.reshape(read_content, [self.args.batch_size, -1])
-             return tf.concat([read_content_reshaped, qa_embedded], 1)
-
-        elif self.args.knowledge_growth == 'summary':
-             summary_reshaped = tf.reshape(summary, [self.args.batch_size, -1])
-             return tf.concat([summary_reshaped, qa_embedded], 1)
- 
-        elif self.args.knowledge_growth == 'pred_prob':
-             pred_prob_reshaped = tf.reshape(pred_prob, [self.args.batch_size, -1])
-             return tf.concat([pred_prob_reshaped, qa_embedded], 1)
-
-    def create_step(self):
-        # q : action for RL
-        # value_matrix : state for RL
-        self.q = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_q') 
-        self.a = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_a') 
-        self.value_matrix = tf.placeholder(tf.float32, [self.args.memory_size,self.args.memory_value_state_dim], name='step_value_matrix')
-
-        slice_a = tf.split(self.a, self.args.seq_len, 1) 
-        a = tf.squeeze(slice_a[0], 1)
- 
-        slice_q = tf.split(self.q, self.args.seq_len, 1) 
-        q = tf.squeeze(slice_q[0], 1)
-        q_embed = self.embedding_q(q)
-        correlation_weight = self.get_correlation_weight(q_embed)
-
-        stacked_value_matrix = tf.tile(tf.expand_dims(self.value_matrix, 0), tf.stack([self.args.batch_size, 1, 1]))
-         
-        # -1 for sampling
-        # 0, 1 for given answer
-        print(self.args.batch_size)
-        print(self.args.seq_len)
-        self.qa = tf.cond(tf.squeeze(a) < 0, lambda: self.sampling_a_given_q(q, stacked_value_matrix), lambda: q + tf.multiply(a, self.args.n_questions))
-        qa_embed = self.embedding_qa(self.qa) 
-
-        ######### Before Step ##########
-        prev_read_content, prev_summary, prev_pred_logits, prev_pred_prob = self.inference(q_embed, correlation_weight, stacked_value_matrix, reuse_flag = True)
-        #prev_pred_prob = tf.nn.sigmoid(prev_pred_logits)
-        #prev_pred_prob = tf.nn.sigmoid(self.inference(q_embed, correlation_weight, stacked_value_matrix, reuse_flag = True))
-
-        ######### STEP #####################
-        knowledge_growth = self.calculate_knowledge_growth(stacked_value_matrix, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob, resue=False)
-        self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, knowledge_growth, True), axis=0)
-        self.stepped_read_content, self.stepped_summary, self.stepped_pred_logits, self.stepped_pred_prob = self.inference(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True)
-        #self.stepped_pred_prob = tf.nn.sigmoid(self.stepped_pred_logits)
-        #self.stepped_pred_prob = tf.nn.sigmoid(self.inference(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True))
-        #self.stepped_value_matrix = tf.squeeze(self.memory.value.write_given_value_matrix(stacked_value_matrix, correlation_weight, qa_embed, True), axis=0)
-
-        ######### After Step #########
-        self.value_matrix_difference = tf.squeeze(tf.reduce_sum(self.stepped_value_matrix - stacked_value_matrix))
-        self.read_content_difference = tf.squeeze(tf.reduce_sum(self.stepped_read_content - prev_read_content))
-        self.summary_difference = tf.squeeze(tf.reduce_sum(self.stepped_summary - prev_summary))
-        self.pred_logit_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_logits - prev_pred_logits))
-        self.pred_prob_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_prob - prev_pred_prob))
-
-        
-    # TODO : rename init_memory?
-    def create_memory(self):
+    def init_memory(self):
         with tf.variable_scope('Memory'):
             init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
@@ -155,13 +79,13 @@ class Model():
         return tf.nn.embedding_lookup(self.qa_embed_mtx, qa)
         
     
-    def create_model(self):
+    def init_model(self):
         # 'seq_len' means question sequences
         self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
         self.qa_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='qa_data')
         self.target_seq = tf.placeholder(tf.float32, [self.args.batch_size, self.args.seq_len], name='target')
 
-        self.memory = self.create_memory()
+        self.memory = self.init_memory()
         self.init_embedding_mtx()
             
         slice_q_data = tf.split(self.q_data_seq, self.args.seq_len, 1) 
@@ -191,8 +115,6 @@ class Model():
                 
             prev_read_content, prev_summary, prev_pred_logit, prev_pred_prob = self.inference(q_embed, correlation_weight, self.memory.memory_value, reuse_flag)
             prediction.append(prev_pred_logit)
-            #prev_pred_prob = tf.sigmoid(prev_pred_logit)
-            #prediction.append(self.inference(q_embed, correlation_weight, self.memory.memory_value, reuse_flag))
 
             knowledge_growth = self.calculate_knowledge_growth(self.memory.memory_value, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob, resue=False)
             self.memory.memory_value = self.update_value_memory(qa_embed, correlation_weight, self.memory.memory_value, knowledge_growth, reuse_flag)
@@ -359,50 +281,6 @@ class Model():
 
         return best_epoch    
     
-    def ideal_test(self, input_type): 
-        
-        if self.load():
-            print('CKPT Loaded')
-        else:
-            raise Exception('CKPT need')
-
-        log_file_name = 'logs/'+self.model_dir
-        if input_type == 0:
-            log_file_name = log_file_name + '_neg.csv'
-        elif input_type == 1:
-            log_file_name = log_file_name + '_pos.csv' 
-        elif input_type == -1:
-            log_file_name = log_file_name + '_rand.csv' 
-
-        log_file = open(log_file_name, 'w')
-        value_matrix = self.sess.run(self.init_memory_value)
-        for i in range(100):
-
-            for q_idx in range(1, self.args.n_questions+1):
-                q = np.expand_dims(np.expand_dims(q_idx, axis=0), axis=0) 
-                a = np.expand_dims(np.expand_dims(input_type, axis=0), axis=0) 
-        
-                #q_embed = self.embedding_q(q)
-                #qa_embed = self.embedding_qa(qa)
-
-                #correlation_weight = self.get_correlation_weight(q_embed)
-                #self.update_value_memory(qa_embed, correlation_weight, True)
-                
-                ops = [self.stepped_value_matrix, self.stepped_pred_prob, self.value_matrix_difference, self.read_content_difference, self.summary_difference, self.pred_logit_difference, self.pred_prob_difference]
-                feed_dict = { self.q : q, self.a : a, self.value_matrix: value_matrix }
-
-                value_matrix, pred_prob, value_matrix_diff, read_content_diff, summary_diff, pred_logit_diff, pred_prob_diff = np.squeeze(self.sess.run(ops, feed_dict=feed_dict))
-                pred_prob = np.squeeze(np.squeeze(pred_prob))
-
-                log = str(i)+','+ str(q_idx) +','+str(input_type)+','+str(np.sum(value_matrix))+','+str(pred_prob) + ','
-                log = log + str(value_matrix_diff) + ','  + str(read_content_diff) + ',' + str(summary_diff) + ',' + str(pred_logit_diff) + ',' + str(pred_prob_diff) + '\n'  
-                log_file.write(log) 
-
-                #log_file.write('{:>3},{:>3},{},{:>5},{:>5},{:>5},{:>5},{:>5}.{:>5},{:>5}\n'.format(i, q_idx, input_type, str(np.sum(value_matrix)), pred_prob, str(value_matrix_diff), str(read_content_diff), str(summary_diff), str(pred_logit_diff), str(pred_prob_diff)))
-                #log_file.write(str(i)+' '+ str(q_idx) +' '+str(input_type)+' '+str(np.sum(value_matrix))+' '+value_matrix_difference+' '+str(np.squeeze(np.squeeze(pred_prob)))+'\n')
-                #print(i, q, a, qa, np.sum(value_matrix), pred_prob, self.memory.value.erase_signal.eval(feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
-        
-        log_file.flush()    
         
              
     
@@ -451,6 +329,108 @@ class Model():
 
         print('Test auc : %3.4f, Test accuracy : %3.4f' % (self.test_auc, self.test_accuracy))
 
+    def calculate_knowledge_growth(self, value_matrix, correlation_weight, qa_embedded, read_content, summary, pred_prob, resue=False):
+        if self.args.knowledge_growth == 'origin': 
+             return qa_embedded
+        
+        elif self.args.knowledge_growth == 'value_matrix':
+             value_matrix_reshaped = tf.reshape(value_matrix, [self.args.batch_size, -1])
+             return tf.concat([value_matrix_reshaped, qa_embedded], 1)
+
+        elif self.args.knowledge_growth == 'read_content':
+             read_content_reshaped = tf.reshape(read_content, [self.args.batch_size, -1])
+             return tf.concat([read_content_reshaped, qa_embedded], 1)
+
+        elif self.args.knowledge_growth == 'summary':
+             summary_reshaped = tf.reshape(summary, [self.args.batch_size, -1])
+             return tf.concat([summary_reshaped, qa_embedded], 1)
+ 
+        elif self.args.knowledge_growth == 'pred_prob':
+             pred_prob_reshaped = tf.reshape(pred_prob, [self.args.batch_size, -1])
+             return tf.concat([pred_prob_reshaped, qa_embedded], 1)
+
+    def init_step(self):
+        # q : action for RL
+        # value_matrix : state for RL
+        self.q = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_q') 
+        self.a = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='step_a') 
+        self.value_matrix = tf.placeholder(tf.float32, [self.args.memory_size,self.args.memory_value_state_dim], name='step_value_matrix')
+
+        slice_a = tf.split(self.a, self.args.seq_len, 1) 
+        a = tf.squeeze(slice_a[0], 1)
+ 
+        slice_q = tf.split(self.q, self.args.seq_len, 1) 
+        q = tf.squeeze(slice_q[0], 1)
+        q_embed = self.embedding_q(q)
+        correlation_weight = self.get_correlation_weight(q_embed)
+
+        stacked_value_matrix = tf.tile(tf.expand_dims(self.value_matrix, 0), tf.stack([self.args.batch_size, 1, 1]))
+         
+        # -1 for sampling
+        # 0, 1 for given answer
+        print(self.args.batch_size)
+        print(self.args.seq_len)
+        self.qa = tf.cond(tf.squeeze(a) < 0, lambda: self.sampling_a_given_q(q, stacked_value_matrix), lambda: q + tf.multiply(a, self.args.n_questions))
+        qa_embed = self.embedding_qa(self.qa) 
+
+        ######### Before Step ##########
+        prev_read_content, prev_summary, prev_pred_logits, prev_pred_prob = self.inference(q_embed, correlation_weight, stacked_value_matrix, reuse_flag = True)
+
+        ######### STEP #####################
+        knowledge_growth = self.calculate_knowledge_growth(stacked_value_matrix, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob, resue=False)
+        self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, knowledge_growth, True), axis=0)
+        self.stepped_read_content, self.stepped_summary, self.stepped_pred_logits, self.stepped_pred_prob = self.inference(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True)
+
+        ######### After Step #########
+        self.value_matrix_difference = tf.squeeze(tf.reduce_sum(self.stepped_value_matrix - stacked_value_matrix))
+        self.read_content_difference = tf.squeeze(tf.reduce_sum(self.stepped_read_content - prev_read_content))
+        self.summary_difference = tf.squeeze(tf.reduce_sum(self.stepped_summary - prev_summary))
+        self.pred_logit_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_logits - prev_pred_logits))
+        self.pred_prob_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_prob - prev_pred_prob))
+    def ideal_test(self, input_type): 
+        
+        if self.load():
+            print('CKPT Loaded')
+        else:
+            raise Exception('CKPT need')
+
+        log_file_name = 'logs/'+self.model_dir
+        if input_type == 0:
+            log_file_name = log_file_name + '_neg.csv'
+        elif input_type == 1:
+            log_file_name = log_file_name + '_pos.csv' 
+        elif input_type == -1:
+            log_file_name = log_file_name + '_rand.csv' 
+
+        log_file = open(log_file_name, 'w')
+        value_matrix = self.sess.run(self.init_memory_value)
+        for i in range(100):
+
+            for q_idx in range(1, self.args.n_questions+1):
+                q = np.expand_dims(np.expand_dims(q_idx, axis=0), axis=0) 
+                a = np.expand_dims(np.expand_dims(input_type, axis=0), axis=0) 
+        
+                #q_embed = self.embedding_q(q)
+                #qa_embed = self.embedding_qa(qa)
+
+                #correlation_weight = self.get_correlation_weight(q_embed)
+                #self.update_value_memory(qa_embed, correlation_weight, True)
+                
+                ops = [self.stepped_value_matrix, self.stepped_pred_prob, self.value_matrix_difference, self.read_content_difference, self.summary_difference, self.pred_logit_difference, self.pred_prob_difference]
+                feed_dict = { self.q : q, self.a : a, self.value_matrix: value_matrix }
+
+                value_matrix, pred_prob, value_matrix_diff, read_content_diff, summary_diff, pred_logit_diff, pred_prob_diff = np.squeeze(self.sess.run(ops, feed_dict=feed_dict))
+                pred_prob = np.squeeze(np.squeeze(pred_prob))
+
+                log = str(i)+','+ str(q_idx) +','+str(input_type)+','+str(np.sum(value_matrix))+','+str(pred_prob) + ','
+                log = log + str(value_matrix_diff) + ','  + str(read_content_diff) + ',' + str(summary_diff) + ',' + str(pred_logit_diff) + ',' + str(pred_prob_diff) + '\n'  
+                log_file.write(log) 
+
+                #log_file.write('{:>3},{:>3},{},{:>5},{:>5},{:>5},{:>5},{:>5}.{:>5},{:>5}\n'.format(i, q_idx, input_type, str(np.sum(value_matrix)), pred_prob, str(value_matrix_diff), str(read_content_diff), str(summary_diff), str(pred_logit_diff), str(pred_prob_diff)))
+                #log_file.write(str(i)+' '+ str(q_idx) +' '+str(input_type)+' '+str(np.sum(value_matrix))+' '+value_matrix_difference+' '+str(np.squeeze(np.squeeze(pred_prob)))+'\n')
+                #print(i, q, a, qa, np.sum(value_matrix), pred_prob, self.memory.value.erase_signal.eval(feed_dict={self.q : q, self.a : a, self.value_matrix: value_matrix}))
+        
+        log_file.flush()    
 
     @property
     def model_dir(self):

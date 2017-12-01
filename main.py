@@ -173,7 +173,7 @@ def main():
                 dkvmn.test(test_q_data, test_qa_data)
     
             if myArgs.dkvmn_ideal_test:
-                dkvmn.create_step()
+                dkvmn.init_step()
                 dkvmn.ideal_test(myArgs.dkvmn_ideal_test_input_type)
             
             ##### DQN #####
@@ -188,12 +188,12 @@ def main():
                 myAgent = DKVMNAgent(myArgs, sess, dkvmn)
 
             if myArgs.dqn_train:
-                dkvmn.create_step()
+                dkvmn.init_step()
                 if os.path.exists('./train.csv'):
                     os.system("rm train.csv")
                 myAgent.train()
             if myArgs.dqn_test:
-                dkvmn.create_step()
+                dkvmn.init_step()
                 myAgent.play()
     
     except KeyboardInterrupt:
