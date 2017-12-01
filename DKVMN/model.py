@@ -17,19 +17,15 @@ class Model():
     
     def sampling_a_given_q(self, q, value_matrix):
         q_embed = self.embedding_q(q)
-        #correlation_weight = self.get_correlation_weight(q_embed)
         correlation_weight = self.memory.attention(q_embed)
 
-        _, _, pred_logit, pred_prob = self.inference(q_embed, correlation_weight, value_matrix, reuse_flag = True)
+        _, _, _, pred_prob = self.inference(q_embed, correlation_weight, value_matrix, reuse_flag = True)
         threshold = tf.random_uniform(pred_prob.shape)
 
         a = tf.cast(tf.less(threshold, pred_prob), tf.int32)
         qa = q + tf.multiply(a, self.args.n_questions)[0]
 
         return qa 
-
-    #def get_correlation_weight(self, q_embed):
-        #return self.memory.attention(q_embed)
 
     def inference(self, q, correlation_weight, value_matrix, reuse_flag):
         read_content = self.memory.value.read(value_matrix, correlation_weight)
@@ -102,15 +98,12 @@ class Model():
                 reuse_flag = True
 
             q = tf.squeeze(slice_q_data[i], 1)
-            #print(tf.shape(q))
             qa = tf.squeeze(slice_qa_data[i], 1)
 
             q_embed = self.embedding_q(q)
             qa_embed = self.embedding_qa(qa)
 
             correlation_weight = self.memory.attention(q_embed)
-            #correlation_weight = self.get_correlation_weight(q_embed)
-                
                 
             prev_read_content, prev_summary, prev_pred_logit, prev_pred_prob = self.inference(q_embed, correlation_weight, self.memory.memory_value, reuse_flag)
             prediction.append(prev_pred_logit)
@@ -362,7 +355,6 @@ class Model():
         q = tf.squeeze(slice_q[0], 1)
         q_embed = self.embedding_q(q)
         correlation_weight = self.memory.attention(q_embed)
-        #correlation_weight = self.get_correlation_weight(q_embed)
 
         stacked_value_matrix = tf.tile(tf.expand_dims(self.value_matrix, 0), tf.stack([self.args.batch_size, 1, 1]))
          
@@ -385,6 +377,8 @@ class Model():
         self.summary_difference = tf.squeeze(tf.reduce_sum(self.stepped_summary - prev_summary))
         self.pred_logit_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_logits - prev_pred_logits))
         self.pred_prob_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_prob - prev_pred_prob))
+
+
     def ideal_test(self, input_type): 
         
         if self.load():

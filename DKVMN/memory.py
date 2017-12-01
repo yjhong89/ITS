@@ -119,16 +119,3 @@ class DKVMN():
     def attention(self, q_embed):
         correlation_weight = self.key.cor_weight(embed=q_embed, key_matrix=self.memory_key)
         return correlation_weight
-
-    def read(self, c_weight):
-        read_content = self.value.read(value_matrix=self.memory_value, correlation_weight=c_weight)
-        return read_content
-
-    def write(self, c_weight, qa_embed, reuse):
-        #self.memory_value = self.value.write_given_value_matrix(value_matrix=self.memory_value, correlation_weight=c_weight, qa_embed=qa_embed, reuse=reuse)
-        #self.memory_value = self.value.write(value_matrix=self.memory_value, correlation_weight=c_weight, qa_embed=qa_embed, reuse=reuse)
-        return self.value.write(value_matrix=self.memory_value, correlation_weight=c_weight, qa_embed=qa_embed, reuse=reuse)
-        #return self.memory_value
-
-
-
