@@ -19,10 +19,6 @@ class Model():
 
     def get_value_memory_shape(self):
         return [self.args.memory_size, self.args.memory_value_state_dim]
-
-    def get_value_memory(self):
-        return self.memory.memory_value
-
     
     def get_n_questions(self):
         return self.args.n_questions
@@ -53,19 +49,6 @@ class Model():
         #return self.memory.value.write_given_value_matrix(value_matrix, correlation_weight, qa, reuse_flag)
         return self.memory.value.write(value_matrix, correlation_weight, qa, knowledge_growth, reuse_flag)
         
-    '''
-    # TODO : rename predict_hit_logits
-    def predict_hit_probability(self, q, correlation_weight, reuse_flag):
-        read_content = self.memory.read(correlation_weight)
-
-        mastery_level_prior_difficulty = tf.concat([read_content, q], 1)
-        # f_t
-        summary_vector = tf.tanh(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
-        # p_t
-        pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
-
-        return pred_logits
-    '''
 
     # TODO : rename predict_hit_logits
     def predict_hit_probability(self, q, correlation_weight, value_matrix, reuse_flag):
@@ -119,6 +102,8 @@ class Model():
          
         # -1 for sampling
         # 0, 1 for given answer
+        print(self.args.batch_size)
+        print(self.args.seq_len)
         self.qa = tf.cond(tf.squeeze(a) < 0, lambda: self.sampling_a_given_q(q, stacked_value_matrix), lambda: q + tf.multiply(a, self.args.n_questions))
         qa_embed = self.embedding_qa(self.qa) 
 

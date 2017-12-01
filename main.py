@@ -43,9 +43,14 @@ def setHyperParamsForDataset(args):
         args.n_questions = 100
         args.seq_len = 200
 
+    '''
     if args.dqn_train is True:
+        print('DQN ARG')
         args.batch_size = 1
         args.seq_len = 1
+        print(args.batch_size)
+    '''
+       
 
     if args.dkvmn_ideal_test is True:
         args.batch_size = 1
@@ -176,7 +181,10 @@ def main():
                 myAgent = SimpleAgent(myArgs, sess)
             elif myArgs.env_name == 'DKVMN':
                 sess.run(tf.global_variables_initializer()) 
+          
                 dkvmn.load()
+                myArgs.batch_size = 1
+                myArgs.seq_len = 1
                 myAgent = DKVMNAgent(myArgs, sess, dkvmn)
 
             if myArgs.dqn_train:

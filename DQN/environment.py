@@ -37,13 +37,14 @@ class DKVMNEnvironment(Environment):
         self.env = dkvmn 
 
         self.env.print_info()
-        self.state_shape = self.env.get_value_memory_shape()
+        #self.state_shape = self.env.get_value_memory_shape()
         self.num_actions = self.env.get_n_questions()
         self.initial_ckpt = np.copy(self.env.memory.memory_value)
         self.episode_step = 0
 
         self.starting_value_matrix = self.sess.run(self.env.init_memory_value)  
         self.value_matrix = self.starting_value_matrix
+        self.state_shape = list(self.value_matrix.shape)
         print(self.value_matrix.shape)
         print(np.sum(self.value_matrix))
             
