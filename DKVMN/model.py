@@ -7,7 +7,7 @@ from memory import DKVMN
 from sklearn import metrics
 
 
-class Model():
+class DKVMNModel():
     def __init__(self, args, sess, name='KT'):
         self.args = args
         self.name = name
@@ -72,6 +72,27 @@ class Model():
     def embedding_qa(self, qa):
         return tf.nn.embedding_lookup(self.qa_embed_mtx, qa)
         
+
+    def calculate_knowledge_growth(self, value_matrix, correlation_weight, qa_embedded, read_content, summary, pred_prob, resue=False):
+        if self.args.knowledge_growth == 'origin': 
+             return qa_embedded
+        
+        elif self.args.knowledge_growth == 'value_matrix':
+             value_matrix_reshaped = tf.reshape(value_matrix, [self.args.batch_size, -1])
+             return tf.concat([value_matrix_reshaped, qa_embedded], 1)
+
+        elif self.args.knowledge_growth == 'read_content':
+             read_content_reshaped = tf.reshape(read_content, [self.args.batch_size, -1])
+             return tf.concat([read_content_reshaped, qa_embedded], 1)
+
+        elif self.args.knowledge_growth == 'summary':
+             summary_reshaped = tf.reshape(summary, [self.args.batch_size, -1])
+             return tf.concat([summary_reshaped, qa_embedded], 1)
+ 
+        elif self.args.knowledge_growth == 'pred_prob':
+             pred_prob_reshaped = tf.reshape(pred_prob, [self.args.batch_size, -1])
+             return tf.concat([pred_prob_reshaped, qa_embedded], 1)
+
     
     def init_model(self):
         # 'seq_len' means question sequences
@@ -321,25 +342,8 @@ class Model():
 
         print('Test auc : %3.4f, Test accuracy : %3.4f' % (self.test_auc, self.test_accuracy))
 
-    def calculate_knowledge_growth(self, value_matrix, correlation_weight, qa_embedded, read_content, summary, pred_prob, resue=False):
-        if self.args.knowledge_growth == 'origin': 
-             return qa_embedded
-        
-        elif self.args.knowledge_growth == 'value_matrix':
-             value_matrix_reshaped = tf.reshape(value_matrix, [self.args.batch_size, -1])
-             return tf.concat([value_matrix_reshaped, qa_embedded], 1)
 
-        elif self.args.knowledge_growth == 'read_content':
-             read_content_reshaped = tf.reshape(read_content, [self.args.batch_size, -1])
-             return tf.concat([read_content_reshaped, qa_embedded], 1)
-
-        elif self.args.knowledge_growth == 'summary':
-             summary_reshaped = tf.reshape(summary, [self.args.batch_size, -1])
-             return tf.concat([summary_reshaped, qa_embedded], 1)
- 
-        elif self.args.knowledge_growth == 'pred_prob':
-             pred_prob_reshaped = tf.reshape(pred_prob, [self.args.batch_size, -1])
-             return tf.concat([pred_prob_reshaped, qa_embedded], 1)
+########################################################## FOR Reinforcement Learning ##############################################################
 
     def init_step(self):
         # q : action for RL

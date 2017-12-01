@@ -151,8 +151,7 @@ def main():
 
         with tf.Session(config=run_config) as sess:
             
-            ## TODO : rename Model to DKVMNModel
-            dkvmn = Model(myArgs, sess, name='DKVMN')
+            dkvmn = DKVMNModel(myArgs, sess, name='DKVMN')
             ##### DKVMN #####
             if myArgs.dkvmn_train:
                 train_data_path = os.path.join(data_directory, myArgs.dataset + '_train1.csv')
