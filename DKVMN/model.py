@@ -201,6 +201,7 @@ class DKVMNModel():
                     print('[Delete Error] %s - %s' % (e.filename, e.strerror))
         
         best_valid_auc = 0
+        #print(self.args.seq_len)
 
         # Training
         for epoch in range(0, self.args.num_epochs):
@@ -335,7 +336,7 @@ class DKVMNModel():
         all_pred = np.concatenate(pred_list, axis=0)
         all_target = np.concatenate(target_list, axis=0)
 
-        self.test_auc = metrics.roc_auc_score(all_target, all_pred)
+        test_auc = metrics.roc_auc_score(all_target, all_pred)
         # Compute metrics
         all_pred[all_pred > 0.5] = 1
         all_pred[all_pred <= 0.5] = 0
@@ -343,9 +344,10 @@ class DKVMNModel():
         # Make '1' for elements higher than 0.5
         # Make '0' for elements lower than 0.5
 
-        self.test_accuracy = metrics.accuracy_score(all_target, all_pred)
+        test_accuracy = metrics.accuracy_score(all_target, all_pred)
 
-        print('Test auc : %3.4f, Test accuracy : %3.4f' % (self.test_auc, self.test_accuracy))
+        print('Test auc : %3.4f, Test accuracy : %3.4f' % (test_auc, test_accuracy))
+        self.write_log(epoch=1, auc=test_auc, accuracy=test_accuracy, loss=0, name='test_')
 
 
 ########################################################## FOR Reinforcement Learning ##############################################################

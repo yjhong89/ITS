@@ -52,9 +52,11 @@ def setHyperParamsForDataset(args):
     '''
        
 
+    '''
     if args.dkvmn_ideal_test is True:
         args.batch_size = 1
         args.seq_len = 1
+    '''
 
 def main():
     try:
@@ -138,6 +140,7 @@ def main():
             os.makedirs(myArgs.dkvmn_log_dir)
 
         data = DATA_LOADER(myArgs.n_questions, myArgs.seq_len, ',')
+        #print(myArgs.seq_len)
         data_directory = os.path.join(myArgs.data_dir, myArgs.dataset)
 
         ### check dqn dir ###
@@ -165,6 +168,7 @@ def main():
                 print('Valid data loaded')
                 print('Shape of train data : %s, valid data : %s' % (train_q_data.shape, valid_q_data.shape))
                 print('Start training')
+                print(myArgs.seq_len)
                 dkvmn.train(train_q_data, train_qa_data, valid_q_data, valid_qa_data)
 
             if myArgs.dkvmn_test:
