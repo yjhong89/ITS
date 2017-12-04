@@ -21,9 +21,10 @@ class DATA_LOADER():
         npy_path_q = path+'_q.npy'
         npy_path_qa = path+'_qa.npy'
         csv_path = path+'.csv'
-        if os.path.isfile(npy_path_q):
-            print('Load npy files')
-            return np.load(npy_path_q), np.load(npy_path_qa)
+
+        #if os.path.isfile(npy_path_q):
+            #print('Load npy files')
+            #return np.load(npy_path_q), np.load(npy_path_qa)
 
         f_data = open(csv_path, 'r')
         # Question/Answer container
@@ -86,8 +87,8 @@ class DATA_LOADER():
             # if qa_data[i] less than seq_len, remainder would be 0
             qa_data_array[i,:len(data)] = data
                 
-        np.save(npy_path_q, q_data_array) 
-        np.save(npy_path_qa, qa_data_array) 
+        #jnp.save(npy_path_q, q_data_array) 
+        #np.save(npy_path_qa, qa_data_array) 
 
         print('Load csv file')
         return q_data_array, qa_data_array
