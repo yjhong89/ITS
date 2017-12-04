@@ -67,6 +67,52 @@ class DKVMN_Memory():
         elif self.args.erase_signal_activation == 'sigmoid':
             return tf.sigmoid(erase_vector)
 
+    def add(self, value_matrix, correlation_weight, knowledge_growth, reuse=False):
+        add_vector = operations.linear(knowledge_growth, self.memory_state_dim, name=self.name+'/Add_Vector', reuse=reuse)
+        add_signal = self.activate_add_signal(add_vector)
+        cw_reshaped = tf.reshape(correlation_weight, [-1,self.memory_size,1])
+        add_reshaped = tf.reshape(add_signal, [-1, 1, self.memory_state_dim])
+        add_mul = tf.multiply(add_reshaped, cw_reshaped)
+  
+        return add_mul
+
+    def erase(self, value_matrix, correlation_weight, knowledge_growth, reuse=False):
+        erase_vector = operations.linear(knowledge_growth, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
+        erase_signal = self.activate_erase_signal(erase_vector)
+        erase_reshaped = tf.reshape(erase_signal, [-1,1,self.memory_state_dim])
+        cw_reshaped = tf.reshape(correlation_weight, [-1,self.memory_size,1])
+        erase_mul = tf.multiply(erase_reshaped, cw_reshaped)
+        erase = value_matrix * (1 - erase_mul)
+      
+        return erase
+
+    def write_given_a(self, value_matrix, correlation_weight, knowledge_growth, a, reuse=False):
+        '''
+            Value matrix : [batch size, memory size, memory state dim(d_k)]
+            Correlation weight : [batch size, memory size]
+        '''
+        add_mul = self.add(value_matrix, correlation_weight, knowledge_growth, reuse)
+        erase = self.erase(value_matrix, correlation_weight, knowledge_growth, reuse)
+        
+        a_reshaped = tf.reshape(tf.cast(a, tf.float32), [-1, 1, 1])
+        ones = tf.ones(tf.shape(a_reshaped))
+        
+        # TODO : split add and erase to two argument 
+        #new_memory = tf.multiply(a_reshaped, add_mul)
+        if self.args.write_type == 'add_off_erase_off':
+            new_memory = tf.multiply(a_reshaped, add_mul) + tf.multiply(ones-a_reshaped, erase)
+        elif self.args.write_type == 'add_on_erase_on':
+            new_memory = add_mul + erase
+        elif self.args.write_type == 'add_on_erase_off':
+            new_memory = add_mul + tf.multiply(ones-a_reshaped, erase)
+        elif self.args.write_type == 'add_off_erase_on':
+            new_memory = tf.multiply(a_reshaped, add_mul) + erase
+
+   
+        # [batch size, memory size, memory value staet dim]
+        #print('Memory shape : %s' % (new_memory.get_shape()))
+        return new_memory
+
     def write(self, value_matrix, correlation_weight, qa_embed, knowledge_growth, reuse=False):
         '''
             Value matrix : [batch size, memory size, memory state dim(d_k)]

@@ -36,8 +36,6 @@ class DKVMNEnvironment(Environment):
         print('Initializing ENVIRONMENT')
         self.env = dkvmn 
 
-        #self.env.print_info()
-        #self.state_shape = self.env.get_value_memory_shape()
         self.num_actions = self.args.n_questions
         self.initial_ckpt = np.copy(self.env.memory.memory_value)
         self.episode_step = 0
@@ -80,4 +78,3 @@ class DKVMNEnvironment(Environment):
 
     def random_action(self):
         return random.randrange(2, self.num_actions+1)
-        

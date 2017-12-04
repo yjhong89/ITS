@@ -73,27 +73,29 @@ class DKVMNModel():
         return tf.nn.embedding_lookup(self.qa_embed_mtx, qa)
         
 
-    def calculate_knowledge_growth(self, value_matrix, correlation_weight, qa_embedded, read_content, summary, pred_prob, resue=False):
+    def calculate_knowledge_growth(self, value_matrix, correlation_weight, qa_embed, read_content, summary, pred_prob):
         if self.args.knowledge_growth == 'origin': 
-             return qa_embedded
+             return qa_embed
         
         elif self.args.knowledge_growth == 'value_matrix':
              value_matrix_reshaped = tf.reshape(value_matrix, [self.args.batch_size, -1])
-             return tf.concat([value_matrix_reshaped, qa_embedded], 1)
+             return tf.concat([value_matrix_reshaped, qa_embed], 1)
 
         elif self.args.knowledge_growth == 'read_content':
              read_content_reshaped = tf.reshape(read_content, [self.args.batch_size, -1])
-             return tf.concat([read_content_reshaped, qa_embedded], 1)
+             return tf.concat([read_content_reshaped, qa_embed], 1)
 
         elif self.args.knowledge_growth == 'summary':
              summary_reshaped = tf.reshape(summary, [self.args.batch_size, -1])
-             return tf.concat([summary_reshaped, qa_embedded], 1)
+             return tf.concat([summary_reshaped, qa_embed], 1)
  
         elif self.args.knowledge_growth == 'pred_prob':
              pred_prob_reshaped = tf.reshape(pred_prob, [self.args.batch_size, -1])
-             return tf.concat([pred_prob_reshaped, qa_embedded], 1)
+             return tf.concat([pred_prob_reshaped, qa_embed], 1)
 
-    
+    def extract_a_from_qa(self, qa):
+        return tf.cast(tf.greater(qa, tf.constant(self.args.n_questions)), tf.float32)
+
     def init_model(self):
         # 'seq_len' means question sequences
         self.q_data_seq = tf.placeholder(tf.int32, [self.args.batch_size, self.args.seq_len], name='q_data_seq') 
@@ -110,7 +112,7 @@ class DKVMNModel():
         prediction = list()
         reuse_flag = False
 
-        self.prev_value_memory = self.memory.memory_value
+        #self.prev_value_memory = self.memory.memory_value
         
         # Logics
         for i in range(self.args.seq_len):
@@ -120,6 +122,7 @@ class DKVMNModel():
 
             q = tf.squeeze(slice_q_data[i], 1)
             qa = tf.squeeze(slice_qa_data[i], 1)
+            a = self.extract_a_from_qa(qa)
 
             q_embed = self.embedding_q(q)
             qa_embed = self.embedding_qa(qa)
@@ -129,12 +132,13 @@ class DKVMNModel():
             prev_read_content, prev_summary, prev_pred_logit, prev_pred_prob = self.inference(q_embed, correlation_weight, self.memory.memory_value, reuse_flag)
             prediction.append(prev_pred_logit)
 
-            knowledge_growth = self.calculate_knowledge_growth(self.memory.memory_value, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob, resue=False)
-            self.memory.memory_value = self.memory.value.write(self.memory.memory_value, correlation_weight, qa_embed, knowledge_growth, reuse_flag)
+            knowledge_growth = self.calculate_knowledge_growth(self.memory.memory_value, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob)
+            self.memory.memory_value = self.memory.value.write_given_a(self.memory.memory_value, correlation_weight, knowledge_growth, a, reuse_flag)
+            #self.memory.memory_value = self.memory.value.write(self.memory.memory_value, correlation_weight, qa_embed, knowledge_growth, reuse_flag)
 
         # reward 
-        self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - self.prev_value_memory)
-        self.next_state = self.memory.memory_value        
+        #self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - self.prev_value_memory)
+        #self.next_state = self.memory.memory_value        
 
         # 'prediction' : seq_len length list of [batch size ,1], make it [batch size, seq_len] tensor
         # tf.stack convert to [batch size, seq_len, 1]
@@ -371,8 +375,10 @@ class DKVMNModel():
         prev_read_content, prev_summary, prev_pred_logits, prev_pred_prob = self.inference(q_embed, correlation_weight, stacked_value_matrix, reuse_flag = True)
 
         ######### STEP #####################
-        knowledge_growth = self.calculate_knowledge_growth(stacked_value_matrix, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob, resue=False)
-        self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, knowledge_growth, True), axis=0)
+        knowledge_growth = self.calculate_knowledge_growth(stacked_value_matrix, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob)
+        # TODO : refactor sampling_a_given_q to return a only for below function call
+        self.stepped_value_matrix = tf.squeeze(self.memory.value.write_given_a(stacked_value_matrix, correlation_weight, knowledge_growth, a, True), axis=0)
+        #self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, knowledge_growth, True), axis=0)
         self.stepped_read_content, self.stepped_summary, self.stepped_pred_logits, self.stepped_pred_prob = self.inference(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True)
 
         ######### After Step #########
@@ -420,7 +426,7 @@ class DKVMNModel():
 
     @property
     def model_dir(self):
-        return 'Knowledge_{}_Add_{}_Erase_{}_{}_{}batch_{}epochs'.format(self.args.knowledge_growth, self.args.add_signal_activation, self.args.erase_signal_activation, self.args.dataset, self.args.batch_size, self.args.num_epochs)
+        return '{}Knowledge_{}_Add_{}_Erase_{}_WriteType_{}_{}_{}batch_{}epochs'.format(self.args.prefix, self.args.knowledge_growth, self.args.add_signal_activation, self.args.erase_signal_activation, self.args.write_type, self.args.dataset, self.args.batch_size, self.args.num_epochs)
 
     def load(self):
         self.args.batch_size = 32

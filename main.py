@@ -59,7 +59,7 @@ def setHyperParamsForDataset(args):
 def main():
     try:
         parser = argparse.ArgumentParser()
-        #parser.add_argument('--prefix', type=str, default='')
+        parser.add_argument('--prefix', type=str, default='')
 
         ########## Control flag ##########
         parser.add_argument('--dkvmn_train', type=str2bool, default='f')
@@ -90,6 +90,8 @@ def main():
         parser.add_argument('--knowledge_growth', type=str, choices=['origin', 'value_matrix', 'read_content', 'summary', 'pred_prob'], default='value_matrix')
         parser.add_argument('--add_signal_activation', type=str, choices=['tanh', 'sigmoid'], default='sigmoid')
         parser.add_argument('--erase_signal_activation', type=str, choices=['tanh', 'sigmoid'], default='sigmoid')
+
+        parser.add_argument('--write_type', type=str, choices=['add_off_erase_off', 'add_off_erase_on', 'add_on_erase_off', 'add_on_erase_on'], default='add_on_erase_on')
        
         ##### Default(STATICS) hyperparameter #####
         parser.add_argument('--batch_size', type=int, default=10)
@@ -172,6 +174,8 @@ def main():
                 dkvmn.test(test_q_data, test_qa_data)
     
             if myArgs.dkvmn_ideal_test:
+                myArgs.batch_size = 1
+                myArgs.seq_len = 1
                 dkvmn.init_step()
                 dkvmn.ideal_test(myArgs.dkvmn_ideal_test_input_type)
             
