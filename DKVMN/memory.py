@@ -8,7 +8,7 @@ import operations
 class DKVMN_Memory():
     def __init__(self, memory_size, memory_state_dim, args, name):
         self.name = name
-        print('%s initialized' % self.name)
+        #print('%s initialized' % self.name)
         # Memory size : N
         self.memory_size = memory_size
         # Memory state dim : D_V or D_K

@@ -170,6 +170,7 @@ class DKVMNModel():
         #    print(i.name)
 
         self.saver = tf.train.Saver()
+        print('Finish init_model')
 
 
     def train(self, train_q_data, train_qa_data, valid_q_data, valid_qa_data):

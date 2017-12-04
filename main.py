@@ -156,8 +156,8 @@ def main():
             dkvmn = DKVMNModel(myArgs, sess, name='DKVMN')
             ##### DKVMN #####
             if myArgs.dkvmn_train:
-                train_data_path = os.path.join(data_directory, myArgs.dataset + '_train1.csv')
-                valid_data_path = os.path.join(data_directory, myArgs.dataset + '_valid1.csv')
+                train_data_path = os.path.join(data_directory, myArgs.dataset + '_train1')
+                valid_data_path = os.path.join(data_directory, myArgs.dataset + '_valid1')
 
                 train_q_data, train_qa_data = data.load_data(train_data_path)
                 print('Train data loaded')
@@ -168,7 +168,7 @@ def main():
                 dkvmn.train(train_q_data, train_qa_data, valid_q_data, valid_qa_data)
 
             if myArgs.dkvmn_test:
-                test_data_path = os.path.join(data_directory, myArgs.dataset + '_test.csv')
+                test_data_path = os.path.join(data_directory, myArgs.dataset + '_test')
                 test_q_data, test_qa_data = data.load_data(test_data_path)
                 print('Test data loaded')
                 dkvmn.test(test_q_data, test_qa_data)
@@ -181,6 +181,7 @@ def main():
                 #dkvmn.ideal_test(myArgs.dkvmn_ideal_test_input_type)
             
             ##### DQN #####
+            '''
             if myArgs.env_name == 'CartPole-v0':
                 myAgent = SimpleAgent(myArgs, sess)
             elif myArgs.env_name == 'DKVMN':
@@ -190,12 +191,20 @@ def main():
                 myArgs.batch_size = 1
                 myArgs.seq_len = 1
                 myAgent = DKVMNAgent(myArgs, sess, dkvmn)
+            '''
+            if myArgs.dqn_train or myArgs.dqn_test:
+                sess.run(tf.global_variables_initializer()) 
+          
+                dkvmn.load()
+                myArgs.batch_size = 1
+                myArgs.seq_len = 1
 
             if myArgs.dqn_train:
                 dkvmn.init_step()
                 if os.path.exists('./train.csv'):
                     os.system("rm train.csv")
                 myAgent.train()
+
             if myArgs.dqn_test:
                 dkvmn.init_step()
                 myAgent.play()
