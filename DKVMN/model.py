@@ -388,8 +388,13 @@ class DKVMNModel():
         self.pred_logit_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_logits - prev_pred_logits))
         self.pred_prob_difference = tf.squeeze(tf.reduce_sum(self.stepped_pred_prob - prev_pred_prob))
 
+    def ideal_test(self):
+        type_list = [0, 1]
+        for t in type_list: 
+            self.ideal_test_given_type(t) 
+    
 
-    def ideal_test(self, input_type): 
+    def ideal_test_given_type(self, input_type): 
         
         if self.load():
             print('CKPT Loaded')
