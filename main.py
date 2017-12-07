@@ -90,8 +90,10 @@ def main():
 
         ########## Modified DKVMN ##########
         parser.add_argument('--knowledge_growth', type=str, choices=['origin', 'value_matrix', 'read_content', 'summary', 'pred_prob'], default='value_matrix')
-        parser.add_argument('--add_signal_activation', type=str, choices=['tanh', 'sigmoid'], default='sigmoid')
-        parser.add_argument('--erase_signal_activation', type=str, choices=['tanh', 'sigmoid'], default='sigmoid')
+        parser.add_argument('--add_signal_activation', type=str, choices=['tanh', 'sigmoid', 'relu'], default='sigmoid')
+        parser.add_argument('--erase_signal_activation', type=str, choices=['tanh', 'sigmoid', 'relu'], default='sigmoid')
+        parser.add_argument('--summary_activation', type=str, choices=['tanh', 'sigmoid', 'relu'], default='sigmoid')
+        
 
         parser.add_argument('--write_type', type=str, choices=['add_off_erase_off', 'add_off_erase_on', 'add_on_erase_off', 'add_on_erase_on'], default='add_on_erase_on')
        

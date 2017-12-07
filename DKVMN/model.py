@@ -31,8 +31,18 @@ class DKVMNModel():
         read_content = self.memory.value.read(value_matrix, correlation_weight)
 
         mastery_level_prior_difficulty = tf.concat([read_content, q_embed], 1)
+
         # f_t
-        summary_vector = tf.tanh(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
+        summary_logit = operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag)
+        if self.args.summary_activation == 'tanh':
+            summary_vector = tf.tanh(summary_logit)
+        elif self.args.summary_activation == 'sigmoid':
+            summary_vector = tf.sigmoid(summary_logit)
+        elif self.args.summary_activation == 'relu':
+            summary_vector = tf.nn.relu(summary_logit)
+
+        #summary_vector = tf.sigmoid(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
+        #summary_vector = tf.tanh(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
         # p_t
         pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
 
@@ -436,7 +446,7 @@ class DKVMNModel():
 
     @property
     def model_dir(self):
-        return '{}Knowledge_{}_Add_{}_Erase_{}_WriteType_{}_{}_{}batch_{}epochs'.format(self.args.prefix, self.args.knowledge_growth, self.args.add_signal_activation, self.args.erase_signal_activation, self.args.write_type, self.args.dataset, self.args.batch_size, self.args.num_epochs)
+        return '{}Knowledge_{}_Summary_{}_Add_{}_Erase_{}_WriteType_{}_{}_{}batch_{}epochs'.format(self.args.prefix, self.args.knowledge_growth, self.args.summary_activation, self.args.add_signal_activation, self.args.erase_signal_activation, self.args.write_type, self.args.dataset, self.args.batch_size, self.args.num_epochs)
 
     def load(self):
         self.args.batch_size = 32

@@ -61,12 +61,16 @@ class DKVMN_Memory():
             return tf.tanh(add_vector)
         elif self.args.add_signal_activation == 'sigmoid':
             return tf.sigmoid(add_vector)
+        elif self.args.add_signal_activation == 'relu':
+            return tf.nn.relu(add_vector)
 
     def activate_erase_signal(self, erase_vector):
         if self.args.erase_signal_activation == 'tanh':
             return tf.tanh(erase_vector)
         elif self.args.erase_signal_activation == 'sigmoid':
             return tf.sigmoid(erase_vector)
+        elif self.args.erase_signal_activation == 'relu':
+            return tf.nn.relu(erase_vector)
 
     def add(self, value_matrix, correlation_weight, knowledge_growth, reuse=False):
         add_vector = operations.linear(knowledge_growth, self.memory_state_dim, name=self.name+'/Add_Vector', reuse=reuse)
