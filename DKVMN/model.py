@@ -27,10 +27,10 @@ class DKVMNModel():
 
         return qa 
 
-    def inference(self, q, correlation_weight, value_matrix, reuse_flag):
+    def inference(self, q_embed, correlation_weight, value_matrix, reuse_flag):
         read_content = self.memory.value.read(value_matrix, correlation_weight)
 
-        mastery_level_prior_difficulty = tf.concat([read_content, q], 1)
+        mastery_level_prior_difficulty = tf.concat([read_content, q_embed], 1)
         # f_t
         summary_vector = tf.tanh(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
         # p_t
@@ -46,7 +46,9 @@ class DKVMNModel():
             init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
             self.init_memory_value = tf.get_variable('value', [self.args.memory_size,self.args.memory_value_state_dim], \
+                #initializer=tf.random_uniform_initializer(minval=0.5, maxval=1.0))
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
+                
         # Broadcast memory value tensor to match [batch size, memory size, memory state dim]
         # First expand dim at axis 0 so that makes 'batch size' axis and tile it along 'batch size' axis
         # tf.tile(inputs, multiples) : multiples length must be thes saame as the number of dimensions in input

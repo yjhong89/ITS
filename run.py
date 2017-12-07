@@ -1,9 +1,9 @@
 import os 
 from subprocess import call
 
-knowledge_growth_list = ['origin', 'value_matrix', 'read_content', 'pred_prob']
+knowledge_growth_list = ['read_content', 'summary', 'origin', 'value_matrix', 'pred_prob']
 #knowledge_growth_list = ['origin', 'value_matrix', 'read_content', 'summary', 'pred_prob']
-add_signal_activation_list = ['tanh', 'sigmoid']
+add_signal_activation_list = ['sigmoid']
 erase_signal_activation_list = ['sigmoid']
 #erase_signal_activation_list = ['tanh', 'sigmoid']
 write_type_list = ['add_off_erase_on']
