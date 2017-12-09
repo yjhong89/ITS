@@ -21,7 +21,7 @@ for knowledge_growth in knowledge_growth_list:
             for write_type in write_type_list:
                 for summary_activation in summary_activation_list:
                     args_list = []
-                    args_list.append('python main.py --dkvmn_train t --dkvmn_test t --dkvmn_ideal_test t --prefix summarySigmoid')
+                    args_list.append('python main.py --dkvmn_train t --dkvmn_test t --dkvmn_ideal_test t')
 
                     args_list.append('--knowledge_growth')
                     args_list.append(knowledge_growth)

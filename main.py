@@ -68,6 +68,7 @@ def main():
         parser.add_argument('--dkvmn_test', type=str2bool, default='f')
         parser.add_argument('--dqn_train', type=str2bool, default='f')
         parser.add_argument('--dqn_test', type=str2bool, default='f')
+        parser.add_argument('--gpu_id', type=str, default='0')
 
         ########## Ideal test for DKVMN
         parser.add_argument('--dkvmn_ideal_test', type=str2bool, default='f')
@@ -94,7 +95,6 @@ def main():
         parser.add_argument('--erase_signal_activation', type=str, choices=['tanh', 'sigmoid', 'relu'], default='sigmoid')
         parser.add_argument('--summary_activation', type=str, choices=['tanh', 'sigmoid', 'relu'], default='sigmoid')
         
-
         parser.add_argument('--write_type', type=str, choices=['add_off_erase_off', 'add_off_erase_on', 'add_on_erase_off', 'add_on_erase_on'], default='add_on_erase_on')
        
         ##### Default(STATICS) hyperparameter #####
@@ -151,7 +151,8 @@ def main():
         if not os.path.exists(myArgs.dqn_log_dir):
             os.makedirs(myArgs.dqn_log_dir)
 
-        os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+        os.environ["CUDA_VISIBLE_DEVICES"] = myArgs.gpu_id 
+        #os.environ["CUDA_VISIBLE_DEVICES"] = '0'
         run_config = tf.ConfigProto()
         #run_config.log_device_placement = True
         run_config.gpu_options.allow_growth = True
