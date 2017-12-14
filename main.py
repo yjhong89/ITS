@@ -76,7 +76,7 @@ def main():
         
         ########## DKVMN ##########
         parser.add_argument('--dataset', type=str, choices=['synthetic', 'assist2009_updated','assist2015','STATICS'], default='assist2009_updated')
-        parser.add_argument('--num_epochs', type=int, default=300)
+        parser.add_argument('--num_epochs', type=int, default=100)
         parser.add_argument('--init_from', type=str2bool, default='t')
         parser.add_argument('--show', type=str2bool, default='f')
 

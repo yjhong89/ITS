@@ -7,11 +7,15 @@ from memory import DKVMN
 from sklearn import metrics
 
 
+
 class DKVMNModel():
     def __init__(self, args, sess, name='KT'):
+
         self.args = args
         self.name = name
         self.sess = sess
+
+        tf.set_random_seed(224)
 
         self.init_model()
     
@@ -30,7 +34,12 @@ class DKVMNModel():
     def inference(self, q_embed, correlation_weight, value_matrix, reuse_flag):
         read_content = self.memory.value.read(value_matrix, correlation_weight)
 
-        mastery_level_prior_difficulty = tf.concat([read_content, q_embed], 1)
+        ##### ADD new FC layer for q_embedding. There is an layer in MXnet implementation
+        q_embed_content_logit = operations.linear(q_embed, 50, name='input_embed_content', reuse=reuse_flag)
+        q_embed_content = tf.tanh(q_embed_content_logit)
+
+        mastery_level_prior_difficulty = tf.concat([read_content, q_embed_content], 1)
+        #mastery_level_prior_difficulty = tf.concat([read_content, q_embed], 1)
 
         # f_t
         summary_logit = operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag)
@@ -54,10 +63,12 @@ class DKVMNModel():
     def init_memory(self):
         with tf.variable_scope('Memory'):
             init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
-                initializer=tf.truncated_normal_initializer(stddev=0.1))
+                initializer=tf.random_normal_initializer(stddev=0.1))
+                #initializer=tf.truncated_normal_initializer(stddev=0.1))
             self.init_memory_value = tf.get_variable('value', [self.args.memory_size,self.args.memory_value_state_dim], \
+                initializer=tf.random_normal_initializer(stddev=0.1))
+                #initializer=tf.truncated_normal_initializer(stddev=0.1))
                 #initializer=tf.random_uniform_initializer(minval=0.5, maxval=1.0))
-                initializer=tf.truncated_normal_initializer(stddev=0.1))
                 
         # Broadcast memory value tensor to match [batch size, memory size, memory state dim]
         # First expand dim at axis 0 so that makes 'batch size' axis and tile it along 'batch size' axis
@@ -73,9 +84,11 @@ class DKVMNModel():
         with tf.variable_scope('Embedding'):
             # A
             self.q_embed_mtx = tf.get_variable('q_embed', [self.args.n_questions+1, self.args.memory_key_state_dim],\
-                initializer=tf.truncated_normal_initializer(stddev=0.1))
+                initializer=tf.random_normal_initializer(stddev=0.1))
+                #initializer=tf.truncated_normal_initializer(stddev=0.1))
             # B
-            self.qa_embed_mtx = tf.get_variable('qa_embed', [2*self.args.n_questions+1, self.args.memory_value_state_dim], initializer=tf.truncated_normal_initializer(stddev=0.1))        
+            self.qa_embed_mtx = tf.get_variable('qa_embed', [2*self.args.n_questions+1, self.args.memory_value_state_dim], initializer=tf.random_normal_initializer(stddev=0.1))        
+            #self.qa_embed_mtx = tf.get_variable('qa_embed', [2*self.args.n_questions+1, self.args.memory_value_state_dim], initializer=tf.truncated_normal_initializer(stddev=0.1))        
         
 
     def embedding_q(self, q):
@@ -165,34 +178,54 @@ class DKVMNModel():
         filtered_target = tf.gather(target_1d, index)
         filtered_logits = tf.gather(pred_logits_1d, index)
         self.loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=filtered_logits, labels=filtered_target))
+        #self.loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=filtered_logits, labels=filtered_target))
         self.pred = tf.sigmoid(pred_logits)
 
         # Optimizer : SGD + MOMENTUM with learning rate decay
         self.global_step = tf.Variable(0, trainable=False)
         self.lr = tf.placeholder(tf.float32, [], name='learning_rate')
-#        self.lr_decay = tf.train.exponential_decay(self.args.initial_lr, global_step=global_step, decay_steps=10000, decay_rate=0.667, staircase=True)
+        #self.lr_decay = tf.train.exponential_decay(self.args.initial_lr, global_step=global_step, decay_steps=10000, decay_rate=0.667, staircase=True)
+        self.learning_rate = tf.train.exponential_decay(self.args.initial_lr, global_step=self.global_step, decay_steps=self.args.anneal_interval*(tf.shape(self.q_data_seq)[0] // self.args.batch_size), decay_rate=0.667, staircase=True)
 #        self.learning_rate = tf.maximum(lr, self.args.lr_lowerbound)
         optimizer = tf.train.MomentumOptimizer(self.lr, self.args.momentum)
+        #optimizer = tf.train.MomentumOptimizer(self.learning_rate, momentum)
         grads, vrbs = zip(*optimizer.compute_gradients(self.loss))
-        grad, _ = tf.clip_by_global_norm(grads, self.args.maxgradnorm)
-        self.train_op = optimizer.apply_gradients(zip(grad, vrbs), global_step=self.global_step)
+        ## grad, _ = tf.clip_by_global_norm(grads, self.args.maxgradnorm)
+        self.grads = grads
+        print('\nGrad')
+        print(len(grads))
+        #for i in range(len(grads)):
+            #print(tf.shape(grads[i][0]))
+        #self.global_norm = tf.global_norm(grads)
+        grad, self.global_norm = tf.clip_by_global_norm(grads, self.args.maxgradnorm)
+        #grad, _ = tf.clip_by_global_norm(grads, self.args.maxgradnorm, use_norm = self.global_norm)
+        
+        self.train_op = optimizer.apply_gradients(list(zip(grad, vrbs)), global_step=self.global_step)
 #        grad_clip = [(tf.clip_by_value(grad, -self.args.maxgradnorm, self.args.maxgradnorm), var) for grad, var in grads]
         self.tr_vrbs = tf.trainable_variables()
-        #for i in self.tr_vrbs:
-        #    print(i.name)
+        for i in self.tr_vrbs:
+            print(i.name)
+            print(i.shape)
 
         self.saver = tf.train.Saver()
         print('Finish init_model')
 
 
     def train(self, train_q_data, train_qa_data, valid_q_data, valid_qa_data):
+        #np.random.seed(224)
         # q_data, qa_data : [samples, seq_len]
-        shuffle_index = np.random.permutation(train_q_data.shape[0])
-        q_data_shuffled = train_q_data[shuffle_index]
-        qa_data_shuffled = train_qa_data[shuffle_index]
 
         training_step = train_q_data.shape[0] // self.args.batch_size
         self.sess.run(tf.global_variables_initializer())
+        '''
+        value_mem = self.init_memory_value.eval()
+        print(np.sum(value_mem))
+
+        for i in self.tr_vrbs:
+            print(i.name)
+            print(i.shape)
+            print(np.sum(i.eval()))
+        '''
         
         if self.args.show:
             from utils import ProgressBar
@@ -208,7 +241,7 @@ class DKVMNModel():
             if os.path.exists(os.path.join(self.args.dkvmn_checkpoint_dir, self.model_dir)):
                 try:
                     shutil.rmtree(os.path.join(self.args.dkvmn_checkpoint_dir, self.model_dir))
-                    shutil.rmtree(os.path.join(self.args.log_dir, self.model_dir+'.csv'))
+                    shutil.rmtree(os.path.join(self.args.dkvmn_log_dir, self.model_dir+'.csv'))
                 except(FileNotFoundError, IOError) as e:
                     print('[Delete Error] %s - %s' % (e.filename, e.strerror))
         
@@ -217,6 +250,10 @@ class DKVMNModel():
 
         # Training
         for epoch in range(0, self.args.num_epochs):
+            shuffle_index = np.random.permutation(train_q_data.shape[0])
+            q_data_shuffled = train_q_data[shuffle_index, :]
+            qa_data_shuffled = train_qa_data[shuffle_index, :]
+
             if self.args.show:
                 bar.next()
 
@@ -224,7 +261,8 @@ class DKVMNModel():
             target_list = list()        
             epoch_loss = 0
             learning_rate = tf.train.exponential_decay(self.args.initial_lr, global_step=self.global_step, decay_steps=self.args.anneal_interval*training_step, decay_rate=0.667, staircase=True)
-
+            lr = learning_rate.eval()
+            print('LR %f' % lr )
             #print('Epoch %d starts with learning rate : %3.5f' % (epoch+1, self.sess.run(learning_rate)))
             for steps in range(training_step):
                 # [batch size, seq_len]
@@ -241,13 +279,32 @@ class DKVMNModel():
 
                 feed_dict = {self.q_data_seq:q_batch_seq, self.qa_data_seq:qa_batch_seq, self.target_seq:target_batch, self.lr:self.args.initial_lr}
                 #self.lr:self.sess.run(learning_rate)
-                loss_, pred_, _, = self.sess.run([self.loss, self.pred, self.train_op], feed_dict=feed_dict)
+                #loss_, pred_, _, = self.sess.run([self.loss, self.pred, self.train_op], feed_dict=feed_dict)
+                loss_, pred_, _, global_norm, grads, _lr = self.sess.run([self.loss, self.pred, self.train_op, self.global_norm, self.grads, self.learning_rate], feed_dict=feed_dict)
+                #print('Global norm %f' % global_norm)
+                #print(grads)
+                #print('Legnth of global variables : %d' % len(grads))
+
+                #print('LR %f %f' % (lr, _lr))
+                #print(len(grads[0])) # 20
+                #print(len(grads[0][0])) # 50
+
+                #print(np.squre(grads[0]))
+                '''
+                globbal_norm = 0
+                for i in range(len(grads)):
+                    print(i)
+                    print(np.sum(np.square(grads[i])))
+                    global_norm += np.sum(np.square(grads[i]))
+                print(np.sqrt(global_norm))
+                '''
                 # Get right answer index
                 # Make [batch size * seq_len, 1]
                 right_target = np.asarray(target_batch).reshape(-1,1)
                 right_pred = np.asarray(pred_).reshape(-1,1)
                 # np.flatnonzero returns indices which is nonzero, convert it list 
                 right_index = np.flatnonzero(right_target != -1.).tolist()
+                #print(len(right_index)/self.args.batch_size)
                 # Number of 'training_step' elements list with [batch size * seq_len, ]
                 pred_list.append(right_pred[right_index])
                 target_list.append(right_target[right_index])
@@ -267,8 +324,8 @@ class DKVMNModel():
             # Extract elements with boolean index
             # Make '1' for elements higher than 0.5
             # Make '0' for elements lower than 0.5
-            all_pred[all_pred > 0.5] = 1
-            all_pred[all_pred <= 0.5] = 0
+            all_pred[all_pred > 0.5] = 1.0
+            all_pred[all_pred <= 0.5] = 0.0
             self.accuracy = metrics.accuracy_score(all_target, all_pred)
 
             epoch_loss = epoch_loss / training_step    
@@ -298,8 +355,8 @@ class DKVMNModel():
 
             valid_auc = metrics.roc_auc_score(all_valid_target, all_valid_pred)
              # For validation accuracy
-            all_valid_pred[all_valid_pred > 0.5] = 1
-            all_valid_pred[all_valid_pred <= 0.5] = 0
+            all_valid_pred[all_valid_pred > 0.5] = 1.0
+            all_valid_pred[all_valid_pred <= 0.5] = 0.0
             valid_accuracy = metrics.accuracy_score(all_valid_target, all_valid_pred)
             print('Epoch %d/%d, valid auc : %3.5f, valid accuracy : %3.5f' %(epoch+1, self.args.num_epochs, valid_auc, valid_accuracy))
             # Valid log
@@ -350,8 +407,8 @@ class DKVMNModel():
 
         test_auc = metrics.roc_auc_score(all_target, all_pred)
         # Compute metrics
-        all_pred[all_pred > 0.5] = 1
-        all_pred[all_pred <= 0.5] = 0
+        all_pred[all_pred > 0.5] = 1.0
+        all_pred[all_pred <= 0.5] = 0.0
         # Extract elements with boolean index
         # Make '1' for elements higher than 0.5
         # Make '0' for elements lower than 0.5
@@ -361,6 +418,13 @@ class DKVMNModel():
         print('Test auc : %3.4f, Test accuracy : %3.4f' % (test_auc, test_accuracy))
         self.write_log(epoch=1, auc=test_auc, accuracy=test_accuracy, loss=0, name='test_')
 
+        log_file_name = 'test_all_%s.txt' % self.args.gpu_id 
+        log_file = open(log_file_name, 'a')
+        log = 'Test auc : %3.4f, Test accuracy : %3.4f' % (test_auc, test_accuracy)
+        log_file.write(self.model_dir + '\n')
+        log_file.write(log + '\n') 
+        log_file.flush()    
+        
 
 ########################################################## FOR Reinforcement Learning ##############################################################
 
@@ -446,7 +510,7 @@ class DKVMNModel():
 
     @property
     def model_dir(self):
-        return '{}Knowledge_{}_Summary_{}_Add_{}_Erase_{}_WriteType_{}_{}_{}batch_{}epochs'.format(self.args.prefix, self.args.knowledge_growth, self.args.summary_activation, self.args.add_signal_activation, self.args.erase_signal_activation, self.args.write_type, self.args.dataset, self.args.batch_size, self.args.num_epochs)
+        return '{}Knowledge_{}_Summary_{}_Add_{}_Erase_{}_WriteType_{}_{}_lr{}_{}batch_{}epochs'.format(self.args.prefix, self.args.knowledge_growth, self.args.summary_activation, self.args.add_signal_activation, self.args.erase_signal_activation, self.args.write_type, self.args.dataset, self.args.initial_lr, self.args.batch_size, self.args.num_epochs)
 
     def load(self):
         self.args.batch_size = 32

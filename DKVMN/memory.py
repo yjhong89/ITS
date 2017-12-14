@@ -7,6 +7,7 @@ import operations
 # This class defines Memory architecture in DKVMN
 class DKVMN_Memory():
     def __init__(self, memory_size, memory_state_dim, args, name):
+        tf.set_random_seed(224)
         self.name = name
         #print('%s initialized' % self.name)
         # Memory size : N
@@ -87,7 +88,8 @@ class DKVMN_Memory():
         erase_reshaped = tf.reshape(erase_signal, [-1,1,self.memory_state_dim])
         cw_reshaped = tf.reshape(correlation_weight, [-1,self.memory_size,1])
         erase_mul = tf.multiply(erase_reshaped, cw_reshaped)
-        erase = value_matrix * (1 - erase_mul)
+        erase = tf.multiply(value_matrix,1 - erase_mul)
+        #erase = value_matrix * (1 - erase_mul)
       
         return erase
 
@@ -118,12 +120,11 @@ class DKVMN_Memory():
         #print('Memory shape : %s' % (new_memory.get_shape()))
         return new_memory
 
+    '''
     def write(self, value_matrix, correlation_weight, qa_embed, knowledge_growth, reuse=False):
-        '''
-            Value matrix : [batch size, memory size, memory state dim(d_k)]
-            Correlation weight : [batch size, memory size]
-            qa_embed : (q, r) pair embed, [batch size, memory state dim(d_v)]
-        '''
+            #Value matrix : [batch size, memory size, memory state dim(d_k)]
+            #Correlation weight : [batch size, memory size]
+            #qa_embed : (q, r) pair embed, [batch size, memory state dim(d_v)]
         #knowledge_growth = self.calculate_knowledge_growth(value_matrix, correlation_weight, qa_embed, reuse)
         erase_vector = operations.linear(knowledge_growth, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
         # [batch size, memory state dim(d_v)]
@@ -150,12 +151,14 @@ class DKVMN_Memory():
         # [batch size, memory size, memory value staet dim]
         #print('Memory shape : %s' % (new_memory.get_shape()))
         return new_memory
+    '''
 
 
 # This class construct key matrix and value matrix
 class DKVMN():
     def __init__(self, memory_size, memory_key_state_dim, memory_value_state_dim, init_memory_key, init_memory_value, args, name='DKVMN'):
         print('Initializing memory..')
+        tf.set_random_seed(224)
         self.name = name
         self.memory_size = memory_size
         self.memory_key_state_dim = memory_key_state_dim
