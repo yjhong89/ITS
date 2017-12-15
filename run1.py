@@ -1,21 +1,22 @@
 import os 
 
 # 'origin', 'value_matrix', 'read_content', 'summary', 'pred_prob'
-knowledge_growth_list = ['value_matrix', 'read_content', 'summary']
+knowledge_growth_list = ['origin']
 
 # 'sigmoid', 'tanh', 'relu'
-add_signal_activation_list = ['tanh', 'sigmoid']
+add_signal_activation_list = ['tanh']
 
 # 'sigmoid', 'tanh', 'relu'
 erase_signal_activation_list = ['sigmoid']
 
 # 'sigmoid', 'tanh', 'relu'
-summary_activation_list = ['tanh', 'sigmoid']
+summary_activation_list = ['tanh']
 
 # 'add_off_erase_off', 'add_off_erase_on', 'add_on_erase_off', 'add_on_erase_on'
-write_type_list = ['add_off_erase_on']
+write_type_list = ['add_on_erase_on']
 
-learning_rate_list = [0.6]
+learning_rate_list = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+#learning_rate_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 # 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
 
 for knowledge_growth in knowledge_growth_list:
@@ -26,7 +27,9 @@ for knowledge_growth in knowledge_growth_list:
                     for learning_rate in learning_rate_list:
 
                         args_list = []
-                        args_list.append('python main.py --dkvmn_train t --dkvmn_test t --dkvmn_ideal_test t --gpu_id 1 --dkvmn_checkpoint_dir DKVMN/100epoch_checkpoint')
+                        args_list.append('python main.py --dkvmn_train f --dkvmn_test f --dkvmn_ideal_test t --gpu_id 1 --dkvmn_checkpoint_dir DKVMN/100epoch_checkpoint')
+
+                        args_list.append('--dataset assist2015')
 
                         args_list.append('--knowledge_growth')
                         args_list.append(knowledge_growth)
