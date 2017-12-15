@@ -24,6 +24,7 @@ def setHyperParamsForDataset(args):
         args.final_fc_dim = 50
         args.n_questions = 110
         args.seq_len = 200
+        args.data_name = 'assist2009_updated'
 
     elif args.dataset == 'synthetic':
         args.batch_size = 32
@@ -33,6 +34,7 @@ def setHyperParamsForDataset(args):
         args.final_fc_dim = 50
         args.n_questions = 50
         args.seq_len = 50
+        args.data_name = 'naive_c5_q50_s4000_v1'
 
     elif args.dataset == 'assist2015':
         args.batch_size = 50 
@@ -42,6 +44,8 @@ def setHyperParamsForDataset(args):
         args.final_fc_dim = 50
         args.n_questions = 100
         args.seq_len = 200
+        args.data_name = 'assist2015'
+
 
     '''
     if args.dqn_train is True:
@@ -88,6 +92,7 @@ def main():
         parser.add_argument('--dkvmn_checkpoint_dir', type=str, default='DKVMN/checkpoint')
         parser.add_argument('--dkvmn_log_dir', type=str, default='DKVMN/log')
         parser.add_argument('--data_dir', type=str, default='DKVMN/data')
+        parser.add_argument('--data_name', type=str, default='assist2009_updated')
 
         ########## Modified DKVMN ##########
         parser.add_argument('--knowledge_growth', type=str, choices=['origin', 'value_matrix', 'read_content', 'summary', 'pred_prob'], default='value_matrix')
@@ -134,6 +139,7 @@ def main():
 
         myArgs = parser.parse_args()
         setHyperParamsForDataset(myArgs)
+        print('Batch_Size : %d' % myArgs.batch_size)
 
         ### check dkvmn dir ###
         if not os.path.exists(myArgs.dkvmn_checkpoint_dir):
@@ -162,8 +168,8 @@ def main():
             dkvmn = DKVMNModel(myArgs, sess, name='DKVMN')
             ##### DKVMN #####
             if myArgs.dkvmn_train:
-                train_data_path = os.path.join(data_directory, myArgs.dataset + '_train1')
-                valid_data_path = os.path.join(data_directory, myArgs.dataset + '_valid1')
+                train_data_path = os.path.join(data_directory, myArgs.data_name + '_train1')
+                valid_data_path = os.path.join(data_directory, myArgs.data_name + '_valid1')
 
                 train_q_data, train_qa_data = data.load_data(train_data_path)
                 print('Train data loaded')
@@ -175,7 +181,7 @@ def main():
                 dkvmn.train(train_q_data, train_qa_data, valid_q_data, valid_qa_data)
 
             if myArgs.dkvmn_test:
-                test_data_path = os.path.join(data_directory, myArgs.dataset + '_test')
+                test_data_path = os.path.join(data_directory, myArgs.data_name + '_test')
                 test_q_data, test_qa_data = data.load_data(test_data_path)
                 print('Test data loaded')
                 dkvmn.test(test_q_data, test_qa_data)

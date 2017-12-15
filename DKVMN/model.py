@@ -14,6 +14,7 @@ class DKVMNModel():
         self.args = args
         self.name = name
         self.sess = sess
+        #self.batch_size = args.batch_size
 
         tf.set_random_seed(224)
 
@@ -510,11 +511,12 @@ class DKVMNModel():
 
     @property
     def model_dir(self):
-        return '{}Knowledge_{}_Summary_{}_Add_{}_Erase_{}_WriteType_{}_{}_lr{}_{}batch_{}epochs'.format(self.args.prefix, self.args.knowledge_growth, self.args.summary_activation, self.args.add_signal_activation, self.args.erase_signal_activation, self.args.write_type, self.args.dataset, self.args.initial_lr, self.args.batch_size, self.args.num_epochs)
+        return '{}Knowledge_{}_Summary_{}_Add_{}_Erase_{}_WriteType_{}_{}_lr{}_{}epochs'.format(self.args.prefix, self.args.knowledge_growth, self.args.summary_activation, self.args.add_signal_activation, self.args.erase_signal_activation, self.args.write_type, self.args.dataset, self.args.initial_lr, self.args.num_epochs)
 
     def load(self):
-        self.args.batch_size = 32
+        #self.args.batch_size = 32
         checkpoint_dir = os.path.join(self.args.dkvmn_checkpoint_dir, self.model_dir)
+        print(checkpoint_dir)
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
             ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
