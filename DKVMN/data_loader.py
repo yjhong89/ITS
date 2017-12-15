@@ -34,6 +34,8 @@ class DATA_LOADER():
         for lineid, line in enumerate(f_data):
             # strip
             line = line.strip()
+            if line[-1] == self.seperate_char:
+                line = line[:-1] 
             # Exercise tag line
             if lineid % 3 == 1:
                 # split by ',', returns tag list
