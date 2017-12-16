@@ -203,7 +203,6 @@ def main():
                 dkvmn.load()
                 myArgs.batch_size = 1
                 myArgs.seq_len = 1
-                myAgent = DKVMNAgent(myArgs, sess, dkvmn)
             '''
             if myArgs.dqn_train or myArgs.dqn_test:
                 sess.run(tf.global_variables_initializer()) 
@@ -211,15 +210,16 @@ def main():
                 dkvmn.load()
                 myArgs.batch_size = 1
                 myArgs.seq_len = 1
+                myAgent = DKVMNAgent(myArgs, sess, dkvmn)
+                dkvmn.init_step()
+                dkvmn.init_total_prediction_probability()
 
             if myArgs.dqn_train:
-                dkvmn.init_step()
                 if os.path.exists('./train.csv'):
                     os.system("rm train.csv")
                 myAgent.train()
 
             if myArgs.dqn_test:
-                dkvmn.init_step()
                 myAgent.play()
     
     except KeyboardInterrupt:

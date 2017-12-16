@@ -66,6 +66,10 @@ class DKVMNEnvironment(Environment):
         self.value_matrix, qa = self.sess.run([self.env.stepped_value_matrix, self.env.qa], feed_dict={self.env.q: action, self.env.a: answer, self.env.value_matrix: prev_value_matrix})
         self.reward = np.sum(self.value_matrix) - np.sum(prev_value_matrix)
 
+        ######## calculate probabilty for total problems
+        total_preds = self.sess.run(self.env.total_pred_probs, feed_dict={self.env.total_value_matrix: self.value_matrix})
+        print(total_preds)
+
         self.episode_step += 1
 
         print('QA : %3d, Reward : %f' % (qa, self.reward))

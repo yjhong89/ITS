@@ -60,6 +60,17 @@ class DKVMNModel():
 
         return read_content, summary_vector, pred_logits, pred_prob
 
+    def init_total_prediction_probability(self):
+        self.total_q_data = tf.placeholder(tf.int32, [self.args.n_questions], name='total_q_data') 
+        self.total_value_matrix = tf.placeholder(tf.float32, [self.args.memory_size,self.args.memory_value_state_dim], name='total_value_matrix')
+
+        total_q_data = tf.constant(np.arange(1,self.args.n_questions+1))
+        q_embeds = self.embedding_q(total_q_data)
+        correlation_weight = self.memory.attention(q_embeds)
+       
+        stacked_total_value_matrix = tf.tile(tf.expand_dims(self.total_value_matrix, 0), tf.stack([self.args.n_questions, 1, 1]))
+        _, _, _, self.total_pred_probs = self.inference(q_embeds, correlation_weight, stacked_total_value_matrix, True)
+
         
     def init_memory(self):
         with tf.variable_scope('Memory'):
