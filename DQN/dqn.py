@@ -28,6 +28,13 @@ class DQN(object):
 
         self.loss, self.optimizer = self.build_optimizer()
 
+        self.copy_op = []
+        pred_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dqn/pred')
+        target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dqn/target')
+
+        for pred_var, target_var in zip(pred_vars, target_vars):
+            self.copy_op.append(target_var.assign(pred_var.value()))
+
     def build_network(self, name):
         with tf.variable_scope(name):
             fc1 = tf.layers.dense(inputs=tf.reshape(self.states, (-1, np.prod(self.input_shape))), units=10, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer)
@@ -48,13 +55,7 @@ class DQN(object):
 
         
     def update_target_network(self):
-        copy_op = []
-        pred_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dqn/pred')
-        target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dqn/target')
-
-        for pred_var, target_var in zip(pred_vars, target_vars):
-            copy_op.append(target_var.assign(pred_var.value()))
-        self.sess.run(copy_op)
+        self.sess.run(self.copy_op)
         print('Copy is done')
 
     def predict_Q_value(self, state):

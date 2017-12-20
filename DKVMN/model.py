@@ -19,6 +19,7 @@ class DKVMNModel():
         tf.set_random_seed(224)
 
         self.init_model()
+        self.init_total_prediction_probability()
     
     def sampling_a_given_q(self, q, value_matrix):
         q_embed = self.embedding_q(q)
@@ -391,6 +392,9 @@ class DKVMNModel():
             print('CKPT Loaded')
         else:
             raise Exception('CKPT need')
+
+        print('Initial value of probability')
+        print(init_probability)
 
         pred_list = list()
         target_list = list()

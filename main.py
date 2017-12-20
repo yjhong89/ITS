@@ -127,12 +127,12 @@ def main():
 
         parser.add_argument('--training_start_step', type=int, default=100)
         parser.add_argument('--train_interval', type=int, default=1)
-        parser.add_argument('--copy_interval', type=int, default=2000)
-        parser.add_argument('--save_interval', type=int, default=1000)
-        parser.add_argument('--show_interval', type=int, default=1000)
-        parser.add_argument('--episode_maxstep', type=int, default=50)
+        parser.add_argument('--copy_interval', type=int, default=4000)
+        parser.add_argument('--save_interval', type=int, default=4000)
+        parser.add_argument('--show_interval', type=int, default=4000)
+        parser.add_argument('--episode_maxstep', type=int, default=2000)
 
-        parser.add_argument('--learning_rate', type=float, default=0.001)
+        parser.add_argument('--learning_rate', type=float, default=0.01)
 
         parser.add_argument('--dqn_checkpoint_dir', type=str, default='DQN/checkpoint')
         parser.add_argument('--dqn_log_dir', type=str, default='DQN/log')
@@ -212,7 +212,7 @@ def main():
                 myArgs.seq_len = 1
                 myAgent = DKVMNAgent(myArgs, sess, dkvmn)
                 dkvmn.init_step()
-                dkvmn.init_total_prediction_probability()
+                #dkvmn.init_total_prediction_probability()
 
             if myArgs.dqn_train:
                 if os.path.exists('./train.csv'):
