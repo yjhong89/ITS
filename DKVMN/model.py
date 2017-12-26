@@ -26,6 +26,12 @@ class DKVMNModel():
         correlation_weight = self.memory.attention(q_embed)
 
         _, _, _, pred_prob = self.inference(q_embed, correlation_weight, value_matrix, reuse_flag = True)
+        #pred_prob[tf.where(tf.less(pred_prob, 0.3))].assign(0.3)
+        #idx = tf.gather_nd(pred_prob, tf.where(tf.less(pred_prob, 0.3)))
+        #pred_prob = tf.assign(idx,tf.constant(0.3))
+        pred_prob = tf.clip_by_value(pred_prob, 0.3, 1.0)
+
+        #pred_prob = tf.minimum(pred_prob, 0.3)
         threshold = tf.random_uniform(pred_prob.shape)
 
         a = tf.cast(tf.less(threshold, pred_prob), tf.int32)
@@ -205,8 +211,8 @@ class DKVMNModel():
         grads, vrbs = zip(*optimizer.compute_gradients(self.loss))
         ## grad, _ = tf.clip_by_global_norm(grads, self.args.maxgradnorm)
         self.grads = grads
-        print('\nGrad')
-        print(len(grads))
+        #print('\nGrad')
+        #print(len(grads))
         #for i in range(len(grads)):
             #print(tf.shape(grads[i][0]))
         #self.global_norm = tf.global_norm(grads)
@@ -275,7 +281,7 @@ class DKVMNModel():
             epoch_loss = 0
             learning_rate = tf.train.exponential_decay(self.args.initial_lr, global_step=self.global_step, decay_steps=self.args.anneal_interval*training_step, decay_rate=0.667, staircase=True)
             lr = learning_rate.eval()
-            print('LR %f' % lr )
+            #print('LR %f' % lr )
             #print('Epoch %d starts with learning rate : %3.5f' % (epoch+1, self.sess.run(learning_rate)))
             for steps in range(training_step):
                 # [batch size, seq_len]
@@ -464,6 +470,7 @@ class DKVMNModel():
         # -1 for sampling
         # 0, 1 for given answer
         self.qa = tf.cond(tf.squeeze(a) < 0, lambda: self.sampling_a_given_q(q, stacked_value_matrix), lambda: q + tf.multiply(a, self.args.n_questions))
+        a = (self.qa-1) // self.args.n_questions
         qa_embed = self.embedding_qa(self.qa) 
 
         ######### Before Step ##########

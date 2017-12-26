@@ -130,20 +130,20 @@ def main():
         parser.add_argument('--copy_interval', type=int, default=4000)
         parser.add_argument('--save_interval', type=int, default=4000)
         parser.add_argument('--show_interval', type=int, default=4000)
-        parser.add_argument('--episode_maxstep', type=int, default=2000)
-
+        parser.add_argument('--episode_maxstep', type=int, default=500)
         parser.add_argument('--learning_rate', type=float, default=0.01)
 
         parser.add_argument('--dqn_checkpoint_dir', type=str, default='DQN/checkpoint')
         parser.add_argument('--dqn_log_dir', type=str, default='DQN/log')
+
+        parser.add_argument('--reward_type', type=str, choices=['value', 'read', 'summary'], default='value')
 
         myArgs = parser.parse_args()
         setHyperParamsForDataset(myArgs)
         print('Batch_Size : %d' % myArgs.batch_size)
 
         ### check dkvmn dir ###
-        if not os.path.exists(myArgs.dkvmn_checkpoint_dir):
-            os.makedirs(myArgs.dkvmn_checkpoint_dir)
+        if not os.path.exists(myArgs.dkvmn_checkpoint_dir): os.makedirs(myArgs.dkvmn_checkpoint_dir)
         if not os.path.exists(myArgs.dkvmn_log_dir):
             os.makedirs(myArgs.dkvmn_log_dir)
 
@@ -207,7 +207,7 @@ def main():
             if myArgs.dqn_train or myArgs.dqn_test:
                 sess.run(tf.global_variables_initializer()) 
           
-                dkvmn.load()
+                #dkvmn.load()
                 myArgs.batch_size = 1
                 myArgs.seq_len = 1
                 myAgent = DKVMNAgent(myArgs, sess, dkvmn)

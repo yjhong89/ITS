@@ -111,10 +111,10 @@ class Agent(object):
             action = self.env.random_action()
             #print('\nRandom action %d' % action)
         else:
-            print(self.env.value_matrix.shape)
+            #print(self.env.value_matrix.shape)
             q = self.dqn.predict_Q_value(np.squeeze(self.env.value_matrix))[0]
             action = np.argmax(q)
-            print('\nQ value %s and action %d' % (q,action))
+            #print('\nQ value %s and action %d' % (q,action))
         return action 
 
     def write_log(self, episode_count, episode_reward):
@@ -166,9 +166,11 @@ class SimpleAgent(Agent):
 class DKVMNAgent(Agent):
     def __init__(self, args, sess, dkvmn):
         print('Initializing AGENT')
+
         self.env = DKVMNEnvironment(args, sess, dkvmn)
         self.memory = DKVMNMemory(args, self.env.state_shape)
         super(DKVMNAgent, self).__init__(args, sess)
+        dkvmn.load()
 
     def reset_episode(self):
         self.env.new_episode()
