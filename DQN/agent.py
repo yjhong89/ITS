@@ -135,6 +135,8 @@ class Agent(object):
         elif self.args.dqn_test:
             self.eps = self.args.eps_test
 
+        print('Eps : %.3f' % self.eps)
+
         if np.random.rand() < self.eps:
             action = self.env.random_action()
             print('\nRandom action %d' % action)
