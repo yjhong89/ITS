@@ -42,36 +42,15 @@ class DKVMNEnvironment(Environment):
         self.episode_step = 0
 
         self.value_matrix = self.sess.run(self.env.init_memory_value)  
-        #self.value_matrix = np.copy(self.starting_value_matrix)
         self.state_shape = list(self.value_matrix.shape)
-        #print(self.value_matrix.shape)
-        #print(np.sum(self.value_matrix))
-        #initial_values_probs = self.sess.run(self.env.total_pred_probs, feed_dict={self.env.total_value_matrix: self.value_matrix})
-        #print('initial_values_probs')
-        #print(initial_values_probs)
-        #print('value[0][0] %f' % self.value_matrix[0][0])
             
 
     def new_episode(self):
         print('NEW EPISODE')
-        #final_values_probs = self.sess.run(self.env.total_pred_probs, feed_dict={self.env.total_value_matrix: self.value_matrix})
-        #print('final_values_probs')
-        #print(final_values_probs)
-        #print('value[0][0] %f' % self.value_matrix[0][0])
-        #self.value_matrix = np.copy(self.starting_value_matrix)
-        #initial_values_probs = self.sess.run(self.env.total_pred_probs, feed_dict={self.env.total_value_matrix: self.value_matrix})
-        #print('initial_values_probs')
-        #print(initial_values_probs)
-        #print('value[0][0] %f' % self.value_matrix[0][0])
-
         final_values_probs = self.sess.run(self.env.total_pred_probs, feed_dict={self.env.total_value_matrix: self.value_matrix})
-        print('final_values_probs')
-        #print(final_values_probs)
 
         self.value_matrix = self.sess.run(self.env.init_memory_value)
         starting_values_probs = self.sess.run(self.env.total_pred_probs, feed_dict={self.env.total_value_matrix: self.value_matrix})
-        #print('starting_values_probs')
-        #print(starting_values_probs)
 
         #diff = final_values_probs - starting_values_probs
         for i, (s,f) in enumerate(zip(starting_values_probs, final_values_probs)):
