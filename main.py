@@ -115,11 +115,11 @@ def main():
         ########## DQN ##########
         parser.add_argument('--env_name', type=str, choices=['CartPole-v0', 'DKVMN'], default='DKVMN')
         parser.add_argument('--batch_size_dqn', type=int, default=32)
-        parser.add_argument('--max_step', type=int, default=100000)
-        parser.add_argument('--max_exploration_step', type=int, default=100000)
+        parser.add_argument('--max_step', type=int, default=1000000)
+        parser.add_argument('--max_exploration_step', type=int, default=1000000)
 
         parser.add_argument('--replay_memory_size', type=int, default=10000)
-
+        parser.add_argument('--case', type=str, default='dqn')
         parser.add_argument('--discount_factor', type=float, default=0.95)
         parser.add_argument('--eps_init', type=float, default=1.0)
         parser.add_argument('--eps_min', type=float, default=0.1)
@@ -217,7 +217,10 @@ def main():
             if myArgs.dqn_train:
                 if os.path.exists('./train.csv'):
                     os.system("rm train.csv")
-                myAgent.train()
+                if myArgs.case == 'baseline':
+                    myAgent.baseline()
+                else:
+                    myAgent.train()
 
             if myArgs.dqn_test:
                 myAgent.play()
