@@ -22,7 +22,6 @@ class Agent(object):
         for i in tf.trainable_variables():
             if "dkvmn" not in i.op.name:
                 print(i.op.name)
-                #self.sess.run(tf.initialize_variables([i]))
 
         self.sess.run(tf.global_variables_initializer())
 

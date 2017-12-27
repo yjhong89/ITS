@@ -26,12 +26,10 @@ class DKVMNModel():
         correlation_weight = self.memory.attention(q_embed)
 
         _, _, _, pred_prob = self.inference(q_embed, correlation_weight, value_matrix, reuse_flag = True)
-        #pred_prob[tf.where(tf.less(pred_prob, 0.3))].assign(0.3)
-        #idx = tf.gather_nd(pred_prob, tf.where(tf.less(pred_prob, 0.3)))
-        #pred_prob = tf.assign(idx,tf.constant(0.3))
+
+        # TODO : arguemnt check for various algorithms
         pred_prob = tf.clip_by_value(pred_prob, 0.3, 1.0)
 
-        #pred_prob = tf.minimum(pred_prob, 0.3)
         threshold = tf.random_uniform(pred_prob.shape)
 
         a = tf.cast(tf.less(threshold, pred_prob), tf.int32)
@@ -47,7 +45,6 @@ class DKVMNModel():
         q_embed_content = tf.tanh(q_embed_content_logit)
 
         mastery_level_prior_difficulty = tf.concat([read_content, q_embed_content], 1)
-        #mastery_level_prior_difficulty = tf.concat([read_content, q_embed], 1)
 
         # f_t
         summary_logit = operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag)
@@ -58,8 +55,6 @@ class DKVMNModel():
         elif self.args.summary_activation == 'relu':
             summary_vector = tf.nn.relu(summary_logit)
 
-        #summary_vector = tf.sigmoid(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
-        #summary_vector = tf.tanh(operations.linear(mastery_level_prior_difficulty, self.args.final_fc_dim, name='Summary_Vector', reuse=reuse_flag))
         # p_t
         pred_logits = operations.linear(summary_vector, 1, name='Prediction', reuse=reuse_flag)
 
@@ -83,11 +78,8 @@ class DKVMNModel():
         with tf.variable_scope('Memory'):
             init_memory_key = tf.get_variable('key', [self.args.memory_size, self.args.memory_key_state_dim], \
                 initializer=tf.random_normal_initializer(stddev=0.1))
-                #initializer=tf.truncated_normal_initializer(stddev=0.1))
             self.init_memory_value = tf.get_variable('value', [self.args.memory_size,self.args.memory_value_state_dim], \
                 initializer=tf.random_normal_initializer(stddev=0.1))
-                #initializer=tf.truncated_normal_initializer(stddev=0.1))
-                #initializer=tf.random_uniform_initializer(minval=0.5, maxval=1.0))
                 
         # Broadcast memory value tensor to match [batch size, memory size, memory state dim]
         # First expand dim at axis 0 so that makes 'batch size' axis and tile it along 'batch size' axis
@@ -156,8 +148,6 @@ class DKVMNModel():
         prediction = list()
         reuse_flag = False
 
-        #self.prev_value_memory = self.memory.memory_value
-        
         # Logics
         for i in range(self.args.seq_len):
             # To reuse linear vectors
@@ -178,11 +168,6 @@ class DKVMNModel():
 
             knowledge_growth = self.calculate_knowledge_growth(self.memory.memory_value, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob)
             self.memory.memory_value = self.memory.value.write_given_a(self.memory.memory_value, correlation_weight, knowledge_growth, a, reuse_flag)
-            #self.memory.memory_value = self.memory.value.write(self.memory.memory_value, correlation_weight, qa_embed, knowledge_growth, reuse_flag)
-
-        # reward 
-        #self.value_memory_difference = tf.reduce_sum(self.memory.memory_value - self.prev_value_memory)
-        #self.next_state = self.memory.memory_value        
 
         # 'prediction' : seq_len length list of [batch size ,1], make it [batch size, seq_len] tensor
         # tf.stack convert to [batch size, seq_len, 1]
@@ -203,24 +188,13 @@ class DKVMNModel():
         # Optimizer : SGD + MOMENTUM with learning rate decay
         self.global_step = tf.Variable(0, trainable=False)
         self.lr = tf.placeholder(tf.float32, [], name='learning_rate')
-        #self.lr_decay = tf.train.exponential_decay(self.args.initial_lr, global_step=global_step, decay_steps=10000, decay_rate=0.667, staircase=True)
         self.learning_rate = tf.train.exponential_decay(self.args.initial_lr, global_step=self.global_step, decay_steps=self.args.anneal_interval*(tf.shape(self.q_data_seq)[0] // self.args.batch_size), decay_rate=0.667, staircase=True)
-#        self.learning_rate = tf.maximum(lr, self.args.lr_lowerbound)
         optimizer = tf.train.MomentumOptimizer(self.lr, self.args.momentum)
-        #optimizer = tf.train.MomentumOptimizer(self.learning_rate, momentum)
         grads, vrbs = zip(*optimizer.compute_gradients(self.loss))
-        ## grad, _ = tf.clip_by_global_norm(grads, self.args.maxgradnorm)
         self.grads = grads
-        #print('\nGrad')
-        #print(len(grads))
-        #for i in range(len(grads)):
-            #print(tf.shape(grads[i][0]))
-        #self.global_norm = tf.global_norm(grads)
         grad, self.global_norm = tf.clip_by_global_norm(grads, self.args.maxgradnorm)
-        #grad, _ = tf.clip_by_global_norm(grads, self.args.maxgradnorm, use_norm = self.global_norm)
         
         self.train_op = optimizer.apply_gradients(list(zip(grad, vrbs)), global_step=self.global_step)
-#        grad_clip = [(tf.clip_by_value(grad, -self.args.maxgradnorm, self.args.maxgradnorm), var) for grad, var in grads]
         self.tr_vrbs = tf.trainable_variables()
         for i in self.tr_vrbs:
             print(i.name)
@@ -265,7 +239,6 @@ class DKVMNModel():
                     print('[Delete Error] %s - %s' % (e.filename, e.strerror))
         
         best_valid_auc = 0
-        #print(self.args.seq_len)
 
         # Training
         for epoch in range(0, self.args.num_epochs):
@@ -281,8 +254,6 @@ class DKVMNModel():
             epoch_loss = 0
             learning_rate = tf.train.exponential_decay(self.args.initial_lr, global_step=self.global_step, decay_steps=self.args.anneal_interval*training_step, decay_rate=0.667, staircase=True)
             lr = learning_rate.eval()
-            #print('LR %f' % lr )
-            #print('Epoch %d starts with learning rate : %3.5f' % (epoch+1, self.sess.run(learning_rate)))
             for steps in range(training_step):
                 # [batch size, seq_len]
                 q_batch_seq = q_data_shuffled[steps*self.args.batch_size:(steps+1)*self.args.batch_size, :]
@@ -297,26 +268,9 @@ class DKVMNModel():
                 target_batch = target_batch.astype(np.float)
 
                 feed_dict = {self.q_data_seq:q_batch_seq, self.qa_data_seq:qa_batch_seq, self.target_seq:target_batch, self.lr:self.args.initial_lr}
-                #self.lr:self.sess.run(learning_rate)
                 #loss_, pred_, _, = self.sess.run([self.loss, self.pred, self.train_op], feed_dict=feed_dict)
                 loss_, pred_, _, global_norm, grads, _lr = self.sess.run([self.loss, self.pred, self.train_op, self.global_norm, self.grads, self.learning_rate], feed_dict=feed_dict)
-                #print('Global norm %f' % global_norm)
-                #print(grads)
-                #print('Legnth of global variables : %d' % len(grads))
 
-                #print('LR %f %f' % (lr, _lr))
-                #print(len(grads[0])) # 20
-                #print(len(grads[0][0])) # 50
-
-                #print(np.squre(grads[0]))
-                '''
-                globbal_norm = 0
-                for i in range(len(grads)):
-                    print(i)
-                    print(np.sum(np.square(grads[i])))
-                    global_norm += np.sum(np.square(grads[i]))
-                print(np.sqrt(global_norm))
-                '''
                 # Get right answer index
                 # Make [batch size * seq_len, 1]
                 right_target = np.asarray(target_batch).reshape(-1,1)
@@ -480,7 +434,6 @@ class DKVMNModel():
         knowledge_growth = self.calculate_knowledge_growth(stacked_value_matrix, correlation_weight, qa_embed, prev_read_content, prev_summary, prev_pred_prob)
         # TODO : refactor sampling_a_given_q to return a only for below function call
         self.stepped_value_matrix = tf.squeeze(self.memory.value.write_given_a(stacked_value_matrix, correlation_weight, knowledge_growth, a, True), axis=0)
-        #self.stepped_value_matrix = tf.squeeze(self.memory.value.write(stacked_value_matrix, correlation_weight, qa_embed, knowledge_growth, True), axis=0)
         self.stepped_read_content, self.stepped_summary, self.stepped_pred_logits, self.stepped_pred_prob = self.inference(q_embed, correlation_weight, self.stepped_value_matrix, reuse_flag = True)
 
         ######### After Step #########
@@ -536,7 +489,6 @@ class DKVMNModel():
         return '{}Knowledge_{}_Summary_{}_Add_{}_Erase_{}_WriteType_{}_{}_lr{}_{}epochs'.format(self.args.prefix, self.args.knowledge_growth, self.args.summary_activation, self.args.add_signal_activation, self.args.erase_signal_activation, self.args.write_type, self.args.dataset, self.args.initial_lr, self.args.num_epochs)
 
     def load(self):
-        #self.args.batch_size = 32
         checkpoint_dir = os.path.join(self.args.dkvmn_checkpoint_dir, self.model_dir)
         print(checkpoint_dir)
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)

@@ -89,7 +89,6 @@ class DKVMN_Memory():
         cw_reshaped = tf.reshape(correlation_weight, [-1,self.memory_size,1])
         erase_mul = tf.multiply(erase_reshaped, cw_reshaped)
         erase = tf.multiply(value_matrix,1 - erase_mul)
-        #erase = value_matrix * (1 - erase_mul)
       
         return erase
 
@@ -105,7 +104,6 @@ class DKVMN_Memory():
         ones = tf.ones(tf.shape(a_reshaped))
         
         # TODO : split add and erase to two argument 
-        #new_memory = tf.multiply(a_reshaped, add_mul)
         if self.args.write_type == 'add_off_erase_off':
             new_memory = tf.multiply(a_reshaped, add_mul) + tf.multiply(ones-a_reshaped, erase)
         elif self.args.write_type == 'add_on_erase_on':
@@ -115,43 +113,9 @@ class DKVMN_Memory():
         elif self.args.write_type == 'add_off_erase_on':
             new_memory = tf.multiply(a_reshaped, add_mul) + erase
 
-   
         # [batch size, memory size, memory value staet dim]
-        #print('Memory shape : %s' % (new_memory.get_shape()))
         return new_memory
 
-    '''
-    def write(self, value_matrix, correlation_weight, qa_embed, knowledge_growth, reuse=False):
-            #Value matrix : [batch size, memory size, memory state dim(d_k)]
-            #Correlation weight : [batch size, memory size]
-            #qa_embed : (q, r) pair embed, [batch size, memory state dim(d_v)]
-        #knowledge_growth = self.calculate_knowledge_growth(value_matrix, correlation_weight, qa_embed, reuse)
-        erase_vector = operations.linear(knowledge_growth, self.memory_state_dim, name=self.name+'/Erase_Vector', reuse=reuse)
-        # [batch size, memory state dim(d_v)]
-        #self.erase_signal = tf.sigmoid(erase_vector)
-        self.erase_signal = self.activate_erase_signal(erase_vector)
-        add_vector = operations.linear(knowledge_growth, self.memory_state_dim, name=self.name+'/Add_Vector', reuse=reuse)
-        # [batch size, memory state dim(d_v)]
-        add_signal = self.activate_add_signal(add_vector)
-
-        # Add vector after erase
-        # [batch size, 1, memory state dim(d_v)]
-        erase_reshaped = tf.reshape(self.erase_signal, [-1,1,self.memory_state_dim])
-        # [batch size, memory size, 1]
-        cw_reshaped = tf.reshape(correlation_weight, [-1,self.memory_size,1])
-        # w_t(i) * e_t
-        erase_mul = tf.multiply(erase_reshaped, cw_reshaped)
-        # Elementwise multiply between [batch size, memory size, memory state dim(d_v)]
-        erase = value_matrix * (1 - erase_mul)
-        # [batch size, 1, memory state dim(d_v)]
-        add_reshaped = tf.reshape(add_signal, [-1, 1, self.memory_state_dim])
-        add_mul = tf.multiply(add_reshaped, cw_reshaped)
-        
-        new_memory = erase + add_mul
-        # [batch size, memory size, memory value staet dim]
-        #print('Memory shape : %s' % (new_memory.get_shape()))
-        return new_memory
-    '''
 
 
 # This class construct key matrix and value matrix
