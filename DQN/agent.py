@@ -101,6 +101,34 @@ class Agent(object):
             print('Best reward : %d' % (best_reward))
 
 
+    def baseline(self, num_episode=1000, load=True):
+        #if load:
+        #    if not self.load():
+        #        exit()
+        self.episode_count = 1
+        self.episode_reward = 0
+        best_reward = 0
+        for episode in range(num_episode):
+            self.reset_episode()
+            current_reward = 0
+
+            terminal = False
+            while not terminal:
+                action, prob = self.env.baseline_act()
+                print(action, prob)
+                _, reward, terminal = self.env.act(action, prob[0])
+                self.episode_reward += reward
+            
+                if terminal:
+                    self.episode_count += 1
+                    break
+
+            if current_reward > best_reward:
+                best_reward = current_reward
+            print('<%d> Current reward: %d' % (episode, current_reward))
+            print('='*30)
+            print('Best reward : %d' % (best_reward))
+
     def select_action(self):
         if self.args.dqn_train:
             self.eps = np.max([self.args.eps_min, self.args.eps_init - (self.args.eps_init - self.args.eps_min)*(float(self.step)/float(self.args.max_exploration_step))])
@@ -109,20 +137,20 @@ class Agent(object):
 
         if np.random.rand() < self.eps:
             action = self.env.random_action()
-            #print('\nRandom action %d' % action)
+            print('\nRandom action %d' % action)
         else:
-            #print(self.env.value_matrix.shape)
             q = self.dqn.predict_Q_value(np.squeeze(self.env.value_matrix))[0]
             action = np.argmax(q)
-            #print('\nQ value %s and action %d' % (q,action))
+            print('\nQ value %s and action %d' % (q,action))
         return action 
 
-    def write_log(self, episode_count, episode_reward):
-        if not os.path.exists('./train.csv'):
-            train_log = open('./train.csv', 'w')
+    def write_log(self, episode_count, episode_reward, case=None):
+        logdir = './' + case + '_train.csv'
+        if not os.path.exists(logdir):
+            train_log = open(logdir, 'w')
             train_log.write('episode\t, total reward\n')
         else:
-            train_log = open('./train.csv', 'a')
+            train_log = open(logdir, 'a')
             train_log.write(str(episode_count) + '\t' + str(episode_reward) +'\n')
         
     @property
@@ -147,7 +175,7 @@ class Agent(object):
             print('Success to laod %s' % checkpoint_model)
             return True
         else:
-            print('Faile to find a checkpoint')
+            print('Failed to find a checkpoint')
             return False
 
 class SimpleAgent(Agent):
@@ -174,7 +202,7 @@ class DKVMNAgent(Agent):
 
     def reset_episode(self):
         self.env.new_episode()
-        self.write_log(self.episode_count, self.episode_reward)
+        self.write_log(self.episode_count, self.episode_reward, case=self.args.case)
         self.env.episode_step = 0
         print('Episode rewards :%3.4f' % self.episode_reward)
         self.episode_reward = 0

@@ -37,7 +37,7 @@ class DQN(object):
 
     def build_network(self, name):
         with tf.variable_scope(name):
-            fc1 = tf.layers.dense(inputs=tf.reshape(self.states, (-1, np.prod(self.input_shape))), units=10, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer)
+            fc1 = tf.layers.dense(inputs=tf.reshape(self.states, (-1, np.prod(self.input_shape))), units=100, activation=tf.nn.tanh, kernel_initializer=self.kernel_initializer)
             Q = tf.layers.dense(inputs=fc1, units=self.num_actions, activation=None, kernel_initializer=self.kernel_initializer)
             return Q
 
